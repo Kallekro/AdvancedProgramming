@@ -18,17 +18,29 @@ where
 
 import Definitions
 
+parenthesize :: String -> String
+parenthesize s = "(" ++ s ++ ")"
+
 showExp :: Exp -> String
 showExp (Cst exp) = show exp
-showExp (Add exp1 exp2) = showExp exp1 ++ " + " ++ showExp exp2
-showExp (Sub exp1 exp2) = showExp exp1 ++ " - " ++ showExp exp2
-showExp (Mul exp1 exp2) = "(" ++ showExp exp1 ++ ") * (" ++ showExp exp2 ++ ")"
+showExp (Add exp1 exp2) = parenthesize (showExp exp1 ++ " + " ++ showExp exp2)
+showExp (Sub exp1 exp2) = parenthesize (showExp exp1 ++ " - " ++ showExp exp2)
+showExp (Mul exp1 exp2) = parenthesize (showExp exp1 ++ " * " ++ showExp exp2)
+showExp (Div exp1 exp2) = parenthesize (showExp exp1 ++ " / " ++ showExp exp2)
+showExp (Pow exp1 exp2) = parenthesize (showExp exp1 ++ " ^ " ++ showExp exp2)
+showExp _ = error "Expression is not supported by showExp."
 
 evalSimple :: Exp -> Integer
-evalSimple = undefined
+evalSimple (Cst exp) = exp
+evalSimple (Add exp1 exp2) = evalSimple exp1 + evalSimple exp2
+evalSimple (Sub exp1 exp2) = evalSimple exp1 - evalSimple exp2
+evalSimple (Mul exp1 exp2) = evalSimple exp1 * evalSimple exp2
+evalSimple (Div exp1 exp2) = evalSimple exp1 `div` evalSimple exp2
+evalSimple (Pow exp1 exp2) = evalSimple exp1 ^ evalSimple exp2
+evalSimple _ = error "Expression is not supported by evalSimple."
 
 extendEnv :: VName -> Integer -> Env -> Env
-extendEnv = undefined
+extendEnv v n r = \_v -> if (v == _v) then Just n else r _v
 
 evalFull :: Exp -> Env -> Integer
 evalFull = undefined
