@@ -35,15 +35,37 @@ evalSimple (Cst exp) = exp
 evalSimple (Add exp1 exp2) = evalSimple exp1 + evalSimple exp2
 evalSimple (Sub exp1 exp2) = evalSimple exp1 - evalSimple exp2
 evalSimple (Mul exp1 exp2) = evalSimple exp1 * evalSimple exp2
-evalSimple (Div exp1 exp2) = evalSimple exp1 `div` evalSimple exp2
-evalSimple (Pow exp1 exp2) = evalSimple exp1 ^ evalSimple exp2
+evalSimple (Div exp1 exp2) =
+  case evalSimple exp2 of 0 -> error "Division by zero."
+                          n -> evalSimple exp1 `div` n
+evalSimple (Pow exp1 exp2) =
+  case evalSimple exp2 of 0 -> 1
+                          n | n >= 0 -> evalSimple exp1 ^ n
+                            | otherwise -> error "Exponent must be positive."
 evalSimple _ = error "Expression is not supported by evalSimple."
 
 extendEnv :: VName -> Integer -> Env -> Env
 extendEnv v n r = \_v -> if (v == _v) then Just n else r _v
 
 evalFull :: Exp -> Env -> Integer
-evalFull = undefined
+evalFull (Cst exp) _ = exp
+evalFull (Add exp1 exp2) r = evalFull exp1 r + evalFull exp2 r
+evalFull (Sub exp1 exp2) r = evalFull exp1 r - evalFull exp2 r
+evalFull (Mul exp1 exp2) r = evalFull exp1 r * evalFull exp2 r
+evalFull (Div exp1 exp2) r = 
+  case evalFull exp2 r of 0 -> error "Division by zero."
+                          n -> evalFull exp1 r `div` n
+evalFull (Pow exp1 exp2) r =
+  case evalFull exp2 r of 0 -> 1
+                          n | n >= 0 -> (evalFull exp1 r) ^ n
+                            | otherwise -> error "Exponent must be positive."
+evalFull (If e1 e2 e3) r =
+  case evalFull e1 r of 0 -> evalFull e3 r
+                        _ -> evalFull e2 r
+evalFull (Var v) r = 
+  case r v of Just n -> n
+              Nothing -> error ("Undefined variable " ++ v)
+evalFull (Let v e1 e2) r = evalFull e2 (extendEnv v (evalFull e1 r) r)
 
 evalErr :: Exp -> Env -> Either ArithError Integer
 evalErr = undefined
