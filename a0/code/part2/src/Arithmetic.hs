@@ -22,7 +22,9 @@ showOp :: Exp -> Exp -> String -> String
 showOp e1 e2 op = "(" ++ showExp e1 ++ op ++ showExp e2 ++ ")"
 
 showExp :: Exp -> String
-showExp (Cst exp) = show exp
+showExp (Cst exp)
+  | exp >= 0 = show exp
+  | otherwise = "(" ++ show exp ++ ")"
 showExp (Add exp1 exp2) = showOp exp1 exp2 "+"
 showExp (Sub exp1 exp2) = showOp exp1 exp2 "-"
 showExp (Mul exp1 exp2) = showOp exp1 exp2 "*"
@@ -36,12 +38,17 @@ evalSimple (Add exp1 exp2) = evalSimple exp1 + evalSimple exp2
 evalSimple (Sub exp1 exp2) = evalSimple exp1 - evalSimple exp2
 evalSimple (Mul exp1 exp2) = evalSimple exp1 * evalSimple exp2
 evalSimple (Div exp1 exp2) =
-  case evalSimple exp2 of 0 -> error "Division by zero."
-                          n -> evalSimple exp1 `div` n
+  case evalSimple exp2 of
+    0 -> error "Division by zero."
+    n -> evalSimple exp1 `div` n
 evalSimple (Pow exp1 exp2) =
-  case evalSimple exp2 of 0 -> 1
-                          n | n >= 0 -> evalSimple exp1 ^ n
-                            | otherwise -> error "Exponent must be positive."
+  let n1 = evalSimple exp1
+    in case evalSimple exp2 of
+      -- We must force evaluation of n1 to crash on errors like (2/0)^0
+      -- instead of just returning 0 which is what Haskells (^) operator does.
+      -- We force the evaluation by testing for n1's self-equality
+      n2 | n2 >= 0 && n1 == n1 -> n1 ^ n2
+         | otherwise -> error "Exponent must be positive."
 evalSimple _ = error "Expression is not supported by evalSimple."
 
 extendEnv :: VName -> Integer -> Env -> Env
@@ -57,9 +64,11 @@ evalFull (Div exp1 exp2) r =
     0 -> error "Division by zero."
     n -> evalFull exp1 r `div` n
 evalFull (Pow exp1 exp2) r =
-  case evalFull exp2 r of
-    n | n >= 0 -> (evalFull exp1 r) ^ n
-      | otherwise -> error "Exponent must be positive."
+  let n1 = evalFull exp1 r
+    in case evalFull exp2 r of
+      -- As evalSimple we force the evaluation by testing for n1's self-equality
+      n2 | n2 >= 0 && n1 == n1 -> n1 ^ n2
+         | otherwise -> error "Exponent must be positive."
 evalFull (If e1 e2 e3) r =
   case evalFull e1 r of
     0 -> evalFull e3 r
@@ -72,7 +81,8 @@ evalFull (Let v e1 e2) r = evalFull e2 (extendEnv v (evalFull e1 r) r)
 evalFull (Sum v e1 e2 e3) r =
   case (evalFull e1 r, evalFull e2 r) of
     (n1, n2) | n1 <= n2 ->
-      (evalFull e3 (extendEnv v n1 r)) + (evalFull (Sum v (Add e1 (Cst 1)) e2 e3) r)
+      (evalFull e3 (extendEnv v n1 r)) +
+      (evalFull (Sum v (Add e1 (Cst 1)) e2 e3) r)
     _ -> 0
 
 evalErrHelper1 :: Exp -> Env -> Either ArithError Integer
