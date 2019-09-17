@@ -13,8 +13,10 @@ newtype RWSP a = RWSP {runRWSP :: ReadData -> StateData ->
 
 -- complete the definitions
 instance Monad RWSP where
-  return a = undefined
-  m >>= f = undefined
+  return a = RWSP (\_ s -> (a, mempty, s))
+  m >>= f = RWSP (\r s0 ->  let (a1, w1, s1) = runRWSP m r s0
+                            in let (a2, w2, s2) = runRWSP (f a1) r s1
+                            in (a2, w1++w2, s2))
 
 -- No need to touch these
 instance Functor RWSP where
@@ -28,19 +30,19 @@ askP = RWSP (\r s -> (r, mempty, s))  -- freebie
 
 -- runs computation with new read data
 withP :: ReadData -> RWSP a -> RWSP a
-withP r' m = undefined
+withP r' m = RWSP (\_ s -> runRWSP m r' s)
 
 -- adds some write data to accumulator
 tellP :: WriteData -> RWSP ()
-tellP w = undefined
+tellP w = RWSP (\_ s -> ((), w, s))
 
 -- returns current state data
 getP :: RWSP StateData
-getP = undefined
+getP = RWSP (\_ s -> (s, mempty, s))
 
 -- overwrites the state data
 putP :: StateData -> RWSP ()
-putP s' = undefined
+putP s' = RWSP (\_ _ -> ((), mempty, s'))
 
 -- sample computation using all features
 type Answer = String
@@ -54,12 +56,57 @@ sampleP =
      tellP "world!"
      return $ "r1 = " ++ show r1 ++ ", r2 = " ++ show r2 ++ ", s1 = " ++ show s1
 
+-- same as sampleP but using standard monad operators instead of do-notation
+sampleP_stdMonadOperators :: RWSP Answer
+sampleP_stdMonadOperators =
+  askP >>= \r1 ->
+  withP 5 askP >>= \r2 ->
+  tellP "Hello, " >>= \_ ->
+  getP >>= \s1 ->
+  putP (s1 + 1.0) >>= \_ ->
+  tellP "world!" >>= \_ ->
+  return $ "r1 = " ++ show r1 ++ ", r2 = " ++ show r2 ++ ", s1 = " ++ show s1
+
+simpleSampleP_SMO :: RWSP Answer
+simpleSampleP_SMO =
+  -- let ("r1 = " ++ show r1, "", 3.5) = runRWSP m r s0
+  -- in let (a2, w2, s2) = runRWSP (f a) r s1
+  -- in (a2, w++w2, s2))
+  askP >>= \r1 ->
+  return $ "r1 = " ++ show r1 -- (\_ s -> (("r1 = " ++ show r1), "", s))
+
+test0 :: RWSP Answer
+test0 = return "Hello"
+test1 :: String
+test1 = (return "Hello") >>= return "LOL"
+test2 :: RWSP Answer
+test2 = askP >>= \r -> return ("r: " ++ show r)
+
 type Result = (Answer, WriteData, StateData)
 
 expected :: Result
 expected = ("r1 = 4, r2 = 5, s1 = 3.5", "Hello, world!", 4.5)
 
 testP = runRWSP sampleP 4 3.5 == expected
+testP_tmp = runRWSP sampleP 4 3.5
+
+-- other test
+mySampleP :: RWSP Answer
+mySampleP =
+  do
+    r1 <- askP
+    r2 <- withP 5 askP
+    tellP "YO"
+    s1 <- getP
+    putP (s1 + 1.0)
+    s2 <- getP
+    putP (s2 + 1.0)
+    return $ "r1 = " ++ show r1 ++ ", r2 = " ++ show r2
+
+expectedmySamplePTest :: Result
+expectedmySamplePTest = ("r1 = 10, r2 = 5", "YO", 2.0)
+
+testmySampleP = runRWSP mySampleP 10 0
 
 -- Version of RWS monad with errors
 type ErrorData = String
@@ -68,8 +115,13 @@ newtype RWSE a = RWSE {runRWSE :: ReadData -> StateData ->
 
 -- Hint: here you may want to exploit that "Either ErrorData" is itself a monad
 instance Monad RWSE where
-  return a = undefined
-  m >>= f = undefined
+  return a = RWSE (\_ s -> Right (a, "", s))
+  m >>= f = RWSE (\r s0 ->  case runRWSE m r s0 of
+                              Right (a, w, s1) ->
+                                case runRWSE (f a) r s1 of
+                                  Right (a2, w2, s2) -> Right (a2, w++w2, s2)
+                                  Left err -> Left err
+                              Left err -> Left err)
 
 instance Functor RWSE where
   fmap = liftM
@@ -77,22 +129,22 @@ instance Applicative RWSE where
   pure = return; (<*>) = ap
 
 askE :: RWSE ReadData
-askE = undefined
+askE = RWSE (\r s -> Right (r, mempty, s))
 
 withE :: ReadData -> RWSE a -> RWSE a
-withE r' m = undefined
+withE r' m = RWSE (\_ s -> runRWSE m r' s)
 
 tellE :: WriteData -> RWSE ()
-tellE w = undefined
+tellE w = RWSE (\_ s -> Right ((), w, s))
 
 getE :: RWSE StateData
-getE = undefined
+getE =  RWSE (\_ s -> Right (s, mempty, s))
 
 putE :: StateData -> RWSE ()
-putE s' = undefined
+putE s' = RWSE (\_ _ -> Right ((), mempty, s'))
 
 throwE :: ErrorData -> RWSE a
-throwE e = undefined
+throwE e = RWSE (\_ _ -> Left e)
 
 sampleE :: RWSE Answer
 sampleE =
@@ -112,7 +164,8 @@ sampleE2 =
      tellE "Blah"
      return $ "r1 = " ++ show r1 ++ ", x = " ++ show x
 
-testE = runRWSE sampleE 4 3.5 == Right expected
+testE_tmp = runRWSE sampleE 4 3.5
+testE = testE_tmp == Right expected
 testE2 = runRWSE sampleE2 4 3.5 == Left "oops"
 
 -- Generic formulations (nothing further to add/modify)

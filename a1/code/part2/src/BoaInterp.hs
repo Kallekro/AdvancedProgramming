@@ -158,7 +158,7 @@ eval (Oper op e1 e2) =
   do v1 <- eval e1
      v2 <- eval e2
      case operate op v1 v2 of
-       Left err -> Comp(\_ -> (Left (EBadArg err), []))
+       Left err -> abort (EBadArg err)
        Right v  -> return v
 
 eval (Not e) = do
@@ -189,19 +189,19 @@ eval (Compr e0 (q:qs)) =
           e0_val <- withBinding vn x (eval (Compr e0 qs))
           case e0_val of
             ListVal l -> return $ ListVal l
-            _ -> return (ListVal [e0_val])
+            _ -> return $ ListVal [e0_val]
         ListVal (x:xs) -> do
           e0_val <- withBinding vn x (eval (Compr e0 qs))
-          rest_val <- eval (Compr e0 ((QFor vn (Const (ListVal xs))) : qs))
+          rest_val <- eval $ Compr e0 ((QFor vn (Const (ListVal xs))) : qs)
           case e0_val of
             ListVal l ->
               case rest_val of
-                ListVal ls -> return (ListVal (l ++ ls))
-                _ -> return (ListVal l)
+                ListVal ls -> return $ ListVal (l ++ ls)
+                _ -> return $ ListVal l
             _ ->
               case rest_val of
-                ListVal ls -> return (ListVal (e0_val : ls))
-                _ -> return (ListVal [e0_val])
+                ListVal ls -> return $ ListVal (e0_val : ls)
+                _ -> return $ ListVal [e0_val]
         _ -> abort $ EBadArg "Not a list."
     QIf e -> do
       cond <- eval e
