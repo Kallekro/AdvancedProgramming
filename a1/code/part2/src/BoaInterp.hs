@@ -111,34 +111,31 @@ range n1 n2 n3 =
 -- the 'print' name is defined in Prelude.
 printListElements :: [Value] -> String
 printListElements [] = ""
-printListElements [x] = (printVal x)
-printListElements (x:xs) = (printVal x) ++ ", " ++ (printListElements xs)
+printListElements [x] = (printVal (Left x))
+printListElements (x:xs) = (printVal (Left x)) ++ ", " ++ (printListElements xs)
 
 -- aka. print
-printVal :: Value -> String
-printVal NoneVal = "None"
-printVal TrueVal = "True"
-printVal FalseVal = "False"
-printVal (IntVal a) = show a
-printVal (StringVal s) = s
-printVal (ListVal l) = "[" ++ printListElements l ++ "]"
+printVal :: Either Value [Value] -> String
+printVal (Left NoneVal) = "None"
+printVal (Left TrueVal) = "True"
+printVal (Left FalseVal) = "False"
+printVal (Left (IntVal a)) = show a
+printVal (Left (StringVal s)) = s
+printVal (Left (ListVal l)) = "[" ++ printListElements l ++ "]"
+printVal (Right [x]) = (printVal (Left x))
+printVal (Right (x:xs)) = (printVal (Left x)) ++ " " ++ (printVal (Right xs))
+printVal (Right []) = ""
 
 -- apply built-in functions
 apply :: FName -> [Value] -> Comp Value
 apply "range" [(IntVal n2)] =
-  Comp (\_ -> (Right (ListVal (range 0 n2 1)), []))
+  return $ ListVal (range 0 n2 1)
 apply "range" [(IntVal n1), (IntVal n2)] =
-  Comp (\_ -> (Right (ListVal (range n1 n2 1)), []))
+  return $ ListVal (range n1 n2 1)
 apply "range" [(IntVal n1), (IntVal n2), (IntVal n3)] =
-  Comp (\_ -> (Right (ListVal (range n1 n2 n3)), []))
-apply "range" _ =
-  Comp (\_ -> (Left (EBadArg "invalid arguments for range."), []))
-apply "print" l = case l of
-  (x:xs) -> do
-    output (printVal x)
-    apply "print" xs
-  [] ->
-    Comp (\_ -> (Right NoneVal, []))
+  return $ ListVal (range n1 n2 n3)
+apply "range" _ = abort $ EBadArg "invalid arguments for range."
+apply "print" l = do { output $ printVal (Right l) ; return NoneVal }
 apply fn _ = abort (EBadFun fn)
 
 -- helper function that evaluates a list of expressions
