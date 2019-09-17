@@ -182,8 +182,8 @@ eval (Compr e0 (q:qs) ) =
     QFor vn (List (x:xs)) -> 
       do x_val <- eval x 
          e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
-         rest_val <- withBinding vn x_val (eval (Compr e0 ((QFor vn (List xs)) : qs)))
-         return (ListVal ([e0_val, rest_val]))
+         --rest_val <- eval (Compr e0 ((QFor vn (List xs)) : qs))
+         return (ListVal ([e0_val]))
     QFor _ (List []) -> 
       do val <- eval e0
          return val
