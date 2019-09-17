@@ -208,11 +208,8 @@ eval (Compr e0 (q:qs) ) =
     QFor _ _ -> abort (EBadArg "Not a list.")
     QIf e ->
       do tasty <- eval e
-         if truthy tasty then
-           do et <- eval e0
-              return et
-         else
-            do return (NoneVal)
+         if truthy tasty then eval (Compr e0 qs)
+         else eval (Compr e0 qs)
 
 exec :: Program -> Comp ()
 exec (x:xs) = case x of
