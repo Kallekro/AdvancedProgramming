@@ -176,14 +176,15 @@ eval (List el) = do
   valList <- evalExpList el
   return (ListVal valList)
 
-eval (Compr e0 []) = eval e0
+eval (Compr e0 []) = eval e0 
 eval (Compr e0 (q:qs) ) = 
   case q of 
     QFor vn (List (x:xs)) -> 
       do x_val <- eval x 
-         e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
+         e0_val <- withBinding vn x_val (eval (Compr e0 qs)   ) 
+         e1_val <- eval (Compr e0 ( (QFor vn (List xs)) : qs) ) 
          --rest_val <- eval (Compr e0 ((QFor vn (List xs)) : qs))
-         return (ListVal ([e0_val]))
+         return (ListVal ([e0_val, e1_val]))
     QFor _ (List []) -> 
       do val <- eval e0
          return val
