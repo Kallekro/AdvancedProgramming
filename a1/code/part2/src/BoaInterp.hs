@@ -179,37 +179,34 @@ eval (List el) = do
   return (ListVal valList)
 
 eval (Compr e0 []) = eval e0
-eval (Compr e0 (q:qs) ) =
+eval (Compr e0 (q:qs)) =
   case q of
-    QFor _ (List []) ->
-      do val <- eval e0
-         return val
-    QFor vn (List [x]) ->
-      do x_val <- eval x
-         e0_val <- withBinding vn x_val (eval (Compr e0 qs))
-         case e0_val of
-           NoneVal -> return $ ListVal []
-           ListVal l -> return $ ListVal l
-           _ -> return (ListVal [e0_val])
-    QFor vn (List (x:xs)) ->
-      do x_val <- eval x
-         e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
-         rest_val <- eval (Compr e0 ((QFor vn (List xs)) : qs))
-         case e0_val of
-           NoneVal -> case rest_val of
-                        ListVal ls -> return (ListVal (ls))
-                        _ -> return (ListVal [])
-           ListVal l -> case rest_val of
-                        ListVal ls -> return (ListVal (l ++ ls))
-                        _ -> return (ListVal l)
-           _ -> case rest_val of
-                  ListVal ls -> return (ListVal (e0_val : ls))
-                  _ -> return (ListVal [e0_val])
-    QFor _ _ -> abort (EBadArg "Not a list.")
-    QIf e ->
-      do tasty <- eval e
-         if truthy tasty then eval (Compr e0 qs)
-         else eval (Compr e0 qs)
+    QFor vn expList -> do
+      valList <- eval expList
+      case valList of
+        ListVal [] -> eval e0
+        ListVal [x] -> do
+          e0_val <- withBinding vn x (eval (Compr e0 qs))
+          case e0_val of
+            ListVal l -> return $ ListVal l
+            _ -> return (ListVal [e0_val])
+        ListVal (x:xs) -> do
+          e0_val <- withBinding vn x (eval (Compr e0 qs))
+          rest_val <- eval (Compr e0 ((QFor vn (Const (ListVal xs))) : qs))
+          case e0_val of
+            ListVal l ->
+              case rest_val of
+                ListVal ls -> return (ListVal (l ++ ls))
+                _ -> return (ListVal l)
+            _ ->
+              case rest_val of
+                ListVal ls -> return (ListVal (e0_val : ls))
+                _ -> return (ListVal [e0_val])
+        _ -> abort $ EBadArg "Not a list."
+    QIf e -> do
+      cond <- eval e
+      if truthy cond then eval (Compr e0 qs)
+      else return (ListVal [])
 
 exec :: Program -> Comp ()
 exec (x:xs) = case x of
