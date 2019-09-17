@@ -64,10 +64,10 @@ truthy (ListVal l) = (length l) /= 0
 operate :: Op -> Value -> Value -> Either String Value
 --Plus
 operate Plus (IntVal v1) (IntVal v2) = Right (IntVal (v1 + v2))
-operate Plus (StringVal s1) (StringVal s2) = Right (StringVal (s1 ++ s2))
-operate Plus (StringVal s) (IntVal i) = Right (StringVal (s ++ (show i)))
-operate Plus (IntVal i) (StringVal s) = Right (StringVal ((show i) ++ s))
-operate Plus (ListVal l1) (ListVal l2) = Right (ListVal (l1 ++ l2))
+-- operate Plus (StringVal s1) (StringVal s2) = Right (StringVal (s1 ++ s2))
+-- operate Plus (StringVal s) (IntVal i) = Right (StringVal (s ++ (show i)))
+-- operate Plus (IntVal i) (StringVal s) = Right (StringVal ((show i) ++ s))
+-- operate Plus (ListVal l1) (ListVal l2) = Right (ListVal (l1 ++ l2))
 --Minus
 operate Minus (IntVal v1) (IntVal v2) = Right (IntVal (v1 - v2))
 --Times
@@ -165,6 +165,7 @@ eval (Not e) = do
     FalseVal -> return TrueVal
     ListVal l   | length l == 0  -> return TrueVal
     StringVal s | length s == 0  -> return TrueVal
+    IntVal 0 -> return TrueVal
     _ -> return FalseVal
 
 eval (Call f args) = do
@@ -175,7 +176,7 @@ eval (List el) = do
   valList <- evalExpList el
   return (ListVal valList)
 
-eval (Compr e0 []) = eval e0
+eval (Compr e0 []) = do {a <- eval e0; return $ ListVal [a] }
 eval (Compr e0 (q:qs)) =
   case q of
     QFor vn expList -> do
