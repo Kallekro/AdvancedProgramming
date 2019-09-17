@@ -99,15 +99,22 @@ operate In v (ListVal l)  =
   else Right FalseVal
 operate op _ _ = Left (show op ++ ": Operand mismatch.")
 
+-- Built-in functions
 range :: Int -> Int -> Int -> [Value]
 range n1 n2 n3 =
   if n3 > 0 && n1 < n2 then (IntVal n1) : (range (n1+n3) n2 n3)
   else if n3 < 0 && n1 > n2 then (IntVal n1) : (range (n1+n3) n2 n3)
   else []
 
+print ::
+
 apply :: FName -> [Value] -> Comp Value
-apply "range" [(IntVal n2)] =
-  Comp (\env -> (Right (ListVal (range 0 n2 1)), []))
+apply "range" args =
+  let (n1, n2, n3) = case length args of
+    1 -> case (args !! 0) of
+  in Comp (\env -> (Right (ListVal (range n1 n2 n3)), []))
+apply "range" [(IntVal n1), (IntVal n2)] =
+  Comp (\env -> (Right (ListVal (range n1 n2 1)), []))
 apply fn _= Comp( \env -> (Left (EBadFun fn), [] ))
 
 -- Main functions of interpreter
