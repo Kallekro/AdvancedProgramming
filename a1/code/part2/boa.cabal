@@ -1,0 +1,55 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 7557d911e2d8b21dc559dbcbc812b40681f2311ecaff7eb21c02355a524b0a09
+
+name:           boa
+version:        0.0.0
+build-type:     Simple
+
+library
+  exposed-modules:
+      BoaAST
+      BoaInterp
+  other-modules:
+      Main
+      Paths_boa
+  hs-source-dirs:
+      src
+  build-depends:
+      base
+    , containers
+  default-language: Haskell2010
+
+executable boa
+  main-is: Main.hs
+  other-modules:
+      BoaAST
+      BoaInterp
+      Paths_boa
+  hs-source-dirs:
+      src
+  build-depends:
+      base
+    , containers
+  default-language: Haskell2010
+
+test-suite my-test-suite
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  other-modules:
+      Paths_boa
+  hs-source-dirs:
+      tests
+  build-depends:
+      QuickCheck
+    , base
+    , boa
+    , containers
+    , tasty
+    , tasty-hunit
+    , tasty-quickcheck
+  default-language: Haskell2010
