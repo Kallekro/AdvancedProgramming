@@ -172,6 +172,37 @@ eval (Call f args) = do
   valList <- evalExpList args
   apply f valList
 
+eval (List el) = do
+  valList <- evalExpList el
+  return (ListVal valList)
+
+eval (Compr e0 []) = eval e0
+eval (Compr e0 (q:qs) ) = 
+  case q of 
+    QFor vn (List (x:xs)) -> 
+      do x_val <- eval x 
+         e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
+         rest_val <- withBinding vn x_val (eval (Compr e0 ((QFor vn (List xs)) : qs)))
+         return (ListVal ([e0_val, rest_val]))
+    QFor _ (List []) -> 
+      do val <- eval e0
+         return val
+    QFor _ _ -> Comp (\_ -> (Left (EBadArg "Not a list."), []))
+    QIf e -> 
+      do tasty <- eval e
+         if truthy tasty then 
+           do et <- eval e0
+              return et
+         else
+            do return (ListVal [])
+    --QFor vn (List (x:[])) ->
+    --  do
+    --    val <- eval x
+    --    e1 <- withBinding vn val (eval e0)
+    --    return (ListVal [e1])
+    --  --_ -> Comp(\env -> (Left (EBadArg "Not a list")))
+
+
 exec :: Program -> Comp ()
 exec (x:xs) = case x of
   SDef name exp -> do
