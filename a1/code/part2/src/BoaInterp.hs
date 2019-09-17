@@ -192,7 +192,10 @@ eval (Compr e0 (q:qs) ) =
       do x_val <- eval x
          e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
          case e0_val of
-           NoneVal -> do return (ListVal [])
+           NoneVal -> do rest_val <- eval (Compr e0 ((QFor vn (List xs)) : qs))
+                         case rest_val of
+                            ListVal ls -> return (ListVal (ls))
+                            _ -> return (ListVal [])
            _ ->
             do rest_val <- eval (Compr e0 ((QFor vn (List xs)) : qs))
                case rest_val of
