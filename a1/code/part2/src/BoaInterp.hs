@@ -139,6 +139,14 @@ apply "print" l = case l of
     Comp (\_ -> (Right NoneVal, []))
 apply fn _= Comp( \_ -> (Left (EBadFun fn), [] ))
 
+-- helper function that evaluates a list of expressions
+evalExpList :: [Exp] -> Comp [Value]
+evalExpList (x:xs) = do
+  a <- eval x
+  rest <- evalExpList xs
+  return $ a : rest
+evalExpList [] = do return []
+
 -- Main functions of interpreter
 eval :: Exp -> Comp Value
 eval (Const v) = Comp (\_ -> (Right v, []))
@@ -160,6 +168,9 @@ eval (Not e) = do
     StringVal s | length s == 0  -> return TrueVal
     _ -> return FalseVal
 
+eval (Call f args) = do
+  valList <- evalExpList args
+  apply f valList
 
 exec :: Program -> Comp ()
 exec (x:xs) = case x of
