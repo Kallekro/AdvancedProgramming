@@ -181,15 +181,21 @@ eval (List el) = do
 eval (Compr e0 []) = eval e0
 eval (Compr e0 (q:qs) ) =
   case q of
-    QFor vn (List (x:xs)) ->
-      do x_val <- eval x
-         e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
-         rest_val <- withBinding vn x_val (eval (Compr e0 ((QFor vn (List xs)) : qs)))
-         return (ListVal (e0_val : rest_val))
     QFor _ (List []) ->
       do val <- eval e0
          return val
-    QFor _ _ ->  -- Comp (\_ -> (Left (EBadArg "Not a list."), []))
+    QFor vn (List [x]) ->
+      do x_val <- eval x
+         e0_val <- withBinding vn x_val (eval (Compr e0 qs))
+         return (ListVal [e0_val])
+    QFor vn (List (x:xs)) ->
+      do x_val <- eval x
+         e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
+         rest_val <- eval (Compr e0 ((QFor vn (List xs)) : qs))
+         case rest_val of
+           ListVal ls -> return (ListVal (e0_val : ls))
+           _ -> return (ListVal [e0_val])
+    QFor _ _ -> abort (EBadArg "Not a list.")
     QIf e ->
       do tasty <- eval e
          if truthy tasty then
