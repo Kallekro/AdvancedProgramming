@@ -177,7 +177,7 @@ eval (Call f args) = do
 eval (List el) = do
   valList <- evalExpList el
   return (ListVal valList)
--- lol
+
 eval (Compr e0 []) = eval e0
 eval (Compr e0 (q:qs) ) =
   case q of
