@@ -119,7 +119,25 @@ apply fn _= Comp( \env -> (Left (EBadFun fn), [] ))
 
 -- Main functions of interpreter
 eval :: Exp -> Comp Value
-eval = undefined
+eval (Const v) = Comp (\_ -> (Right v, [])) 
+eval (Var vn)  = look vn
+
+eval (Oper op e1 e2) = 
+  do v1 <- eval e1
+     v2 <- eval e2 
+     case operate op v1 v2 of
+       Left err -> Comp(\env -> (Left (EBadArg err), []))
+       Right v  -> return v
+     
+eval (Not e) =
+  do v <- eval e
+    case v of
+      None -> return TrueVal
+      FalseVal -> return TrueVal
+      ListVal l   | length l == 0  -> return TrueVal
+      StringVal s | length s == 0  -> return TrueVal
+      _ -> return FalseVal
+
 
 exec :: Program -> Comp ()
 exec (x:xs) = case x of
