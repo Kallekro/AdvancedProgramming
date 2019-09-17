@@ -187,7 +187,10 @@ eval (Compr e0 (q:qs) ) =
     QFor vn (List [x]) ->
       do x_val <- eval x
          e0_val <- withBinding vn x_val (eval (Compr e0 qs))
-         return (ListVal [e0_val])
+         case e0_val of
+           NoneVal -> return $ ListVal []
+           ListVal l -> return $ ListVal l
+           _ -> return (ListVal [e0_val])
     QFor vn (List (x:xs)) ->
       do x_val <- eval x
          e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
@@ -196,6 +199,9 @@ eval (Compr e0 (q:qs) ) =
            NoneVal -> case rest_val of
                         ListVal ls -> return (ListVal (ls))
                         _ -> return (ListVal [])
+           ListVal l -> case rest_val of
+                        ListVal ls -> return (ListVal (l ++ ls))
+                        _ -> return (ListVal l)
            _ -> case rest_val of
                   ListVal ls -> return (ListVal (e0_val : ls))
                   _ -> return (ListVal [e0_val])
@@ -207,8 +213,6 @@ eval (Compr e0 (q:qs) ) =
               return et
          else
             do return (NoneVal)
-
-
 
 exec :: Program -> Comp ()
 exec (x:xs) = case x of
