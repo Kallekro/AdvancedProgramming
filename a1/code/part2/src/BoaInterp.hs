@@ -151,7 +151,7 @@ evalExpList [] = do return []
 
 -- Main functions of interpreter
 eval :: Exp -> Comp Value
-eval (Const v) = Comp (\_ -> (Right v, []))
+eval (Const v) = return v
 eval (Var vn)  = look vn
 
 eval (Oper op e1 e2) =
@@ -202,13 +202,8 @@ eval (Compr e0 (q:qs) ) =
            do et <- eval e0
               return et
          else
-            do return (ListVal [])
-    --QFor vn (List (x:[])) ->
-    --  do
-    --    val <- eval x
-    --    e1 <- withBinding vn val (eval e0)
-    --    return (ListVal [e1])
-    --  --_ -> Comp(\env -> (Left (EBadArg "Not a list")))
+            do return ([NoneVal])
+
 
 
 exec :: Program -> Comp ()
