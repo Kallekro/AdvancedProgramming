@@ -100,43 +100,65 @@ operate In v (ListVal l)  =
 operate op _ _ = Left (show op ++ ": Operand mismatch.")
 
 -- Built-in functions
+-- built-in: range
 range :: Int -> Int -> Int -> [Value]
 range n1 n2 n3 =
-  if n3 > 0 && n1 < n2 then (IntVal n1) : (range (n1+n3) n2 n3)
-  else if n3 < 0 && n1 > n2 then (IntVal n1) : (range (n1+n3) n2 n3)
+  if (n3 > 0 && n1 < n2) || (n3 < 0 && n1 > n2) then
+    (IntVal n1) : (range (n1+n3) n2 n3)
   else []
 
-print ::
+-- built-in: print
+printListElements :: [Value] -> String
+printListElements [] = ""
+printListElements [x] = (printVal x)
+printListElements (x:xs) = (printVal x) ++ ", " ++ (printListElements xs)
 
+printVal :: Value -> String
+printVal NoneVal = "None"
+printVal TrueVal = "True"
+printVal FalseVal = "False"
+printVal (IntVal a) = show a
+printVal (StringVal s) = s
+printVal (ListVal l) = "[" ++ printListElements l ++ "]"
+
+-- apply built-in functions
 apply :: FName -> [Value] -> Comp Value
-apply "range" args =
-  let (n1, n2, n3) = case length args of
-    1 -> case (args !! 0) of
-  in Comp (\env -> (Right (ListVal (range n1 n2 n3)), []))
+apply "range" [(IntVal n2)] =
+  Comp (\_ -> (Right (ListVal (range 0 n2 1)), []))
 apply "range" [(IntVal n1), (IntVal n2)] =
-  Comp (\env -> (Right (ListVal (range n1 n2 1)), []))
-apply fn _= Comp( \env -> (Left (EBadFun fn), [] ))
+  Comp (\_ -> (Right (ListVal (range n1 n2 1)), []))
+apply "range" [(IntVal n1), (IntVal n2), (IntVal n3)] =
+  Comp (\_ -> (Right (ListVal (range n1 n2 n3)), []))
+apply "range" _ =
+  Comp (\_ -> (Left (EBadArg "invalid arguments for range."), []))
+apply "print" l = case l of
+  (x:xs) -> do
+    output (printVal x)
+    apply "print" xs
+  [] ->
+    Comp (\_ -> (Right NoneVal, []))
+apply fn _= Comp( \_ -> (Left (EBadFun fn), [] ))
 
 -- Main functions of interpreter
 eval :: Exp -> Comp Value
-eval (Const v) = Comp (\_ -> (Right v, [])) 
+eval (Const v) = Comp (\_ -> (Right v, []))
 eval (Var vn)  = look vn
 
-eval (Oper op e1 e2) = 
+eval (Oper op e1 e2) =
   do v1 <- eval e1
-     v2 <- eval e2 
+     v2 <- eval e2
      case operate op v1 v2 of
-       Left err -> Comp(\env -> (Left (EBadArg err), []))
+       Left err -> Comp(\_ -> (Left (EBadArg err), []))
        Right v  -> return v
-     
-eval (Not e) =
-  do v <- eval e
-    case v of
-      None -> return TrueVal
-      FalseVal -> return TrueVal
-      ListVal l   | length l == 0  -> return TrueVal
-      StringVal s | length s == 0  -> return TrueVal
-      _ -> return FalseVal
+
+eval (Not e) = do
+  v <- eval e
+  case v of
+    NoneVal -> return TrueVal
+    FalseVal -> return TrueVal
+    ListVal l   | length l == 0  -> return TrueVal
+    StringVal s | length s == 0  -> return TrueVal
+    _ -> return FalseVal
 
 
 exec :: Program -> Comp ()
