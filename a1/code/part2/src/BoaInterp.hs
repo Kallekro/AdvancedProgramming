@@ -26,7 +26,6 @@ instance Monad Comp where
                    in (b, l++l2)
         Left e ->  (Left e, l))
 
-
 -- You shouldn't need to modify these
 instance Functor Comp where
   fmap = liftM
@@ -108,11 +107,14 @@ range n1 n2 n3 =
   else []
 
 -- built-in: print
+-- The main function is 'printVal' which is named so because
+-- the 'print' name is defined in Prelude.
 printListElements :: [Value] -> String
 printListElements [] = ""
 printListElements [x] = (printVal x)
 printListElements (x:xs) = (printVal x) ++ ", " ++ (printListElements xs)
 
+-- aka. print
 printVal :: Value -> String
 printVal NoneVal = "None"
 printVal TrueVal = "True"
@@ -137,7 +139,7 @@ apply "print" l = case l of
     apply "print" xs
   [] ->
     Comp (\_ -> (Right NoneVal, []))
-apply fn _= Comp( \_ -> (Left (EBadFun fn), [] ))
+apply fn _ = abort (EBadFun fn)
 
 -- helper function that evaluates a list of expressions
 evalExpList :: [Exp] -> Comp [Value]
@@ -172,6 +174,13 @@ eval (Call f args) = do
   valList <- evalExpList args
   apply f valList
 
+-- eval (Compr e (q:qs)) =
+--     case q of
+--       QFor name (ListVal lv) -> do
+--         lst <- eval exp
+--         withBinding name
+--     [] -> do return $ ListVal []
+
 exec :: Program -> Comp ()
 exec (x:xs) = case x of
   SDef name exp -> do
@@ -183,4 +192,7 @@ exec (x:xs) = case x of
 exec [] = do return ()
 
 execute :: Program -> ([String], Maybe RunError)
-execute = undefined
+execute p = let (a, output) = runComp (exec p) []
+            in case a of
+              Left err -> (output, Just err)
+              Right _ -> (output, Nothing)
