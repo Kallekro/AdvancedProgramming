@@ -26,7 +26,6 @@ instance Monad Comp where
                    in (b, l++l2)
         Left e ->  (Left e, l))
 
-
 -- You shouldn't need to modify these
 instance Functor Comp where
   fmap = liftM
@@ -108,11 +107,14 @@ range n1 n2 n3 =
   else []
 
 -- built-in: print
+-- The main function is 'printVal' which is named so because
+-- the 'print' name is defined in Prelude.
 printListElements :: [Value] -> String
 printListElements [] = ""
 printListElements [x] = (printVal x)
 printListElements (x:xs) = (printVal x) ++ ", " ++ (printListElements xs)
 
+-- aka. print
 printVal :: Value -> String
 printVal NoneVal = "None"
 printVal TrueVal = "True"
@@ -137,7 +139,7 @@ apply "print" l = case l of
     apply "print" xs
   [] ->
     Comp (\_ -> (Right NoneVal, []))
-apply fn _= Comp( \_ -> (Left (EBadFun fn), [] ))
+apply fn _ = abort (EBadFun fn)
 
 -- helper function that evaluates a list of expressions
 evalExpList :: [Exp] -> Comp [Value]
@@ -176,22 +178,27 @@ eval (List el) = do
   valList <- evalExpList el
   return (ListVal valList)
 
-eval (Compr e0 []) = eval e0 
-eval (Compr e0 (q:qs) ) = 
-  case q of 
-    QFor vn (List (x:xs)) -> 
-      do x_val <- eval x 
-         e0_val <- withBinding vn x_val (eval (Compr e0 qs)   ) 
-         e1_val <- eval (Compr e0 ( (QFor vn (List xs)) : qs) ) 
-         --rest_val <- eval (Compr e0 ((QFor vn (List xs)) : qs))
-         return (ListVal ([e0_val, e1_val]))
-    QFor _ (List []) -> 
+eval (Compr e0 []) = eval e0
+eval (Compr e0 (q:qs) ) =
+  case q of
+    QFor _ (List []) ->
       do val <- eval e0
          return val
-    QFor _ _ -> Comp (\_ -> (Left (EBadArg "Not a list."), []))
-    QIf e -> 
+    QFor vn (List [x]) ->
+      do x_val <- eval x
+         e0_val <- withBinding vn x_val (eval (Compr e0 qs))
+         return (ListVal [e0_val])
+    QFor vn (List (x:xs)) ->
+      do x_val <- eval x
+         e0_val <- withBinding vn x_val (eval (Compr e0 qs) )
+         rest_val <- eval (Compr e0 ((QFor vn (List xs)) : qs))
+         case rest_val of
+           ListVal ls -> return (ListVal (e0_val : ls))
+           _ -> return (ListVal [e0_val])
+    QFor _ _ -> abort (EBadArg "Not a list.")
+    QIf e ->
       do tasty <- eval e
-         if truthy tasty then 
+         if truthy tasty then
            do et <- eval e0
               return et
          else
@@ -215,4 +222,7 @@ exec (x:xs) = case x of
 exec [] = do return ()
 
 execute :: Program -> ([String], Maybe RunError)
-execute = undefined
+execute p = let (a, output) = runComp (exec p) []
+            in case a of
+              Left err -> (output, Just err)
+              Right _ -> (output, Nothing)
