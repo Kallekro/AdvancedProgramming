@@ -99,13 +99,15 @@ operate In v (ListVal l)  =
   else Right FalseVal
 operate op _ _ = Left (show op ++ ": Operand mismatch.")
 
---built_in_funs = [ ("plus1", \(IntVal x) => x -> x+1) ]
-
-plus1 :: Value -> Value
-plus1 (IntVal x) = IntVal (x + 1)
+range :: Int -> Int -> Int -> [Value]
+range n1 n2 n3 =
+  if n3 > 0 && n1 < n2 then (IntVal n1) : (range (n1+n3) n2 n3)
+  else if n3 < 0 && n1 > n2 then (IntVal n1) : (range (n1+n3) n2 n3)
+  else []
 
 apply :: FName -> [Value] -> Comp Value
-apply "plus1" [x] = Comp( \env -> (Right (plus1 x), []))
+apply "range" [(IntVal n2)] =
+  Comp (\env -> (Right (ListVal (range 0 n2 1)), []))
 apply fn _= Comp( \env -> (Left (EBadFun fn), [] ))
 
 -- Main functions of interpreter
@@ -131,15 +133,14 @@ eval (Not e) =
 
 
 exec :: Program -> Comp ()
-exec = undefined
+exec (x:xs) = case x of
+  SDef name exp -> do
+    a <- eval exp
+    withBinding name a (exec xs)
+  SExp exp -> do
+    eval exp
+    exec xs
+exec [] = do return ()
 
 execute :: Program -> ([String], Maybe RunError)
 execute = undefined
-
-
-test = do
-        --output "Hello"
-        --x <- look "abc"
-        --output ", world!"
-        y <- operate In (StringVal "Woop") (ListVal [StringVal "Jim", StringVal "Woopsie"])
-        return y
