@@ -12,7 +12,8 @@ main = defaultMain $ localOption (mkTimeout 1000000) tests
 
 tests :: TestTree
 tests =
-  testGroup "Stubby tests"
+  testGroup "All tests"
+  [testGroup "Monad operator tests"
   [ -- Comp return and bind
     testCase "testCompBase1" $
       (runComp (return ()) [])
@@ -90,7 +91,10 @@ tests =
           (StringVal s1, StringVal s2) -> return $ s1 ++ s2
           _ -> return ""
         )) [("b", StringVal "Darlin'")])
-      @?= (Right "Oh, Darlin'", []),
+      @?= (Right "Oh, Darlin'", [])],
+
+  testGroup "Helper function tests"
+    [
     -- truthy
     testCase "testTruthy1" $ truthy NoneVal @?= False,
     testCase "testTruthy2" $ truthy TrueVal @?= True,
@@ -107,13 +111,10 @@ tests =
     testCase "testOperatePlus1" $
       operate Plus (IntVal 1) (IntVal 2)
       @?= Right (IntVal 3),
-    testCase "testOperatePlus7" $
+    testCase "testOperatePlus2" $
       operate Plus NoneVal (IntVal 2)
       @?= Left ("Plus: Operand mismatch."),
-    testCase "testOperatePlus8" $
-      operate Plus (ListVal []) (IntVal 2)
-      @?= Left ("Plus: Operand mismatch."),
-    testCase "testOperatePlus9" $
+    testCase "testOperatePlus3" $
       operate Plus (FalseVal) (TrueVal)
       @?= Left ("Plus: Operand mismatch."),
     -- operate Minus
@@ -124,15 +125,15 @@ tests =
       operate Minus (IntVal (-99)) (IntVal (-100))
       @?= Right (IntVal 1),
     testCase "testOperateMinus3" $
-      operate Minus (IntVal (100)) (IntVal 0)
-      @?= Right (IntVal 100),
-    testCase "testOperateMinus4" $
       operate Minus (NoneVal) (IntVal 0)
       @?= Left ("Minus: Operand mismatch."),
-
-
-    testCase "execute crash.boa" $
-      execute crashAST @?= crashOut]
+    testCase "testOperateTimes1" $
+      operate Times (IntVal 2) (IntVal 5)
+      @?= Right (IntVal 10)
+    ],
+  testGroup "Other tests"
+    [testCase "execute crash.boa" $
+      execute crashAST @?= crashOut]]
   where
     crashAST = [SExp (Call "print" [Oper Plus (Const (IntVal 2))
                                               (Const (IntVal 2))]),
