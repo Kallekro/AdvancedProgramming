@@ -401,9 +401,12 @@ tests =
     testCase "evalList2" $
       runComp (eval (List [])) []
       @?= (Right (ListVal []), []),
-    testCase "evalList2" $
+    testCase "evalList3" $
       runComp (eval (List [List [Var "x"], List [Var "y"]])) testEnv1
-      @?= (Right (ListVal [ListVal [IntVal 2],ListVal [IntVal 10]]), [])
+      @?= (Right (ListVal [ListVal [IntVal 2],ListVal [IntVal 10]]), []),
+    testCase "evalList4" $
+      runComp (eval (List [Var "w"])) testEnv1
+      @?= (Left (EBadVar "w"), [])
     -- eval Compr
     ],
   testGroup "exec and execute"
