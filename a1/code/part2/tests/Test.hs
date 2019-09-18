@@ -391,6 +391,10 @@ tests =
         runComp (eval (Not (Var "name"))) testEnv1
         @?= (Right FalseVal, [])
       -- eval Call
+      testCase "evalCall1" $
+        runComp (eval (Call "range" [(Const (IntVal 3))] )) []
+        @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), [])
+
       -- eval List
       -- eval Compr
     ],
