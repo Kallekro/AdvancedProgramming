@@ -470,7 +470,7 @@ tests =
     testCase "evalList4" $
       runComp (eval (List [Var "w"])) testEnv1
       @?= (Left (EBadVar "w"), []),
-    -- eval Compr
+    -- eval Compr 
     testCase "evalCompr1" $
       runComp (eval (Compr (Const (IntVal 42)) [])) []
       @?= (Right (IntVal 42), []),
