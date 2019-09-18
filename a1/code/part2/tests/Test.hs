@@ -394,6 +394,69 @@ tests =
       runComp (eval (Not (List []))) testEnv1
       @?= (Right TrueVal, []),
     -- eval Call
+    testCase "evalCall-range1" $
+      runComp (eval (Call "range" [(Const (IntVal 3))] )) []
+      @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
+      testCase "evalCall-range2" $
+      runComp (eval (Call "range" [Const (IntVal 0), Const (IntVal 3)] )) []
+      @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
+    testCase "evalCall-range3" $
+      runComp (eval (Call "range" [Const (IntVal 0), Const (IntVal 3), 
+                                   Const (IntVal 1)] )) []
+      @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
+    testCase "evalCall-range4" $
+      runComp (eval (Call "range" [Const (IntVal 0), 
+                                   Const (IntVal 3), Const (IntVal 2)])) []
+      @?= (Right (ListVal [IntVal 0, IntVal 2]), []),
+    testCase "evalCall-range5" $
+      runComp (eval (Call "range" [Const (IntVal (-2)),Const (IntVal 3),
+                                   Const (IntVal 2)])) []
+      @?= (Right (ListVal [IntVal (-2), IntVal 0, IntVal 2]), []),
+    testCase "evalCall-range6" $
+      runComp (eval (Call "range" [Const (IntVal 0)])) []
+      @?= (Right (ListVal []), []),
+    testCase "evalCall-range7" $
+      runComp (eval (Call "range" [Const (IntVal (-1))])) []
+      @?= (Right (ListVal []), []),
+    testCase "evalCall-range8" $
+      runComp (eval (Call "range" [Const (IntVal 3),Const (IntVal 0)])) []
+      @?= (Right (ListVal []), []),
+    testCase "evalCall-range9" $
+      runComp (eval (Call "range" [Const (IntVal 3),Const (IntVal 0),
+                                   Const (IntVal (-1))])) []
+      @?= (Right (ListVal [IntVal 3, IntVal 2, IntVal 1]), []),
+    testCase "evalCall-range10" $
+      runComp (eval (Call "range" [Const (IntVal 3),Const (IntVal 0),
+                                   Const (IntVal 1)])) []
+      @?= (Right (ListVal []), []),
+    testCase "evalCall-range11" $
+      runComp (eval (Call "range" [Const (StringVal "hello")])) []
+      @?= (Left (EBadArg "invalid arguments for range."), []),
+    testCase "evalCall-range12" $
+      runComp (eval (Call "range" [Const (IntVal 3), 
+                                   Const (StringVal "hello")])) []
+      @?= (Left (EBadArg "invalid arguments for range."), []),
+      testCase "evalCall-print1" $
+      runComp (eval (Call "print" [Const (StringVal "Hello world!")])) []
+      @?= (Right NoneVal, ["Hello world!"]),
+    testCase "evalCall-print2" $
+      runComp (eval (Call "print" [Const (StringVal "Hello"), 
+                                   Const (StringVal "world!")])) []
+      @?= (Right NoneVal, ["Hello world!"]),
+    testCase "evalCall-print3" $
+      runComp (eval (Call "print" [Const (StringVal "Power: >"), 
+                                   Const (IntVal 9000) ])) []
+      @?= (Right NoneVal, ["Power: > 9000"]),
+    testCase "evalCall-print4" $
+      runComp (eval (Call "print" [Const (IntVal 42), Const (StringVal "foo"),
+                                   Const (ListVal [TrueVal, ListVal []]), 
+                                   Const (IntVal (-1))])) []
+      @?= (Right NoneVal, ["42 foo [True, []] -1"]),
+    
+      --testCase "evalCall-print5" $
+    --  runComp (eval (Call "print" [Const (ListVal [IntVal 1, 
+    --                                               IntVal 2])])) []
+    --  @?= (Right NoneVal, ["[1, 2]"])
     -- eval List
     testCase "evalList1" $
       runComp (eval (List [Var "x", Var "y", Var "z"])) testEnv1
