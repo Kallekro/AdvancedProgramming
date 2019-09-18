@@ -266,133 +266,145 @@ tests =
     ],
   testGroup "apply (and built-ins)"
     [ -- apply range
-      testCase "range1" $
-        runComp (apply "range" [IntVal 3]) []
-        @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
-      testCase "range2" $
-        runComp (apply "range" [IntVal 0, IntVal 3]) []
-        @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
-      testCase "range3" $
-        runComp (apply "range" [IntVal 0, IntVal 3, IntVal 1]) []
-        @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
-      testCase "range4" $
-        runComp (apply "range" [IntVal 0, IntVal 3, IntVal 2]) []
-        @?= (Right (ListVal [IntVal 0, IntVal 2]), []),
-      testCase "range5" $
-        runComp (apply "range" [IntVal (-2), IntVal 3, IntVal 2]) []
-        @?= (Right (ListVal [IntVal (-2), IntVal 0, IntVal 2]), []),
-      testCase "range6" $
-        runComp (apply "range" [IntVal 0]) []
-        @?= (Right (ListVal []), []),
-      testCase "range7" $
-        runComp (apply "range" [IntVal (-1)]) []
-        @?= (Right (ListVal []), []),
-      testCase "range8" $
-        runComp (apply "range" [IntVal 3, IntVal 0]) []
-        @?= (Right (ListVal []), []),
-      testCase "range9" $
-        runComp (apply "range" [IntVal 3, IntVal 0, IntVal (-1)]) []
-        @?= (Right (ListVal [IntVal 3, IntVal 2, IntVal 1]), []),
-      testCase "range10" $
-        runComp (apply "range" [IntVal 3, IntVal 0, IntVal 1]) []
-        @?= (Right (ListVal []), []),
-      testCase "range11" $
-        runComp (apply "range" [StringVal "hello"]) []
-        @?= (Left (EBadArg "invalid arguments for range."), []),
-      testCase "range12" $
-        runComp (apply "range" [IntVal 3, StringVal "hello"]) []
-        @?= (Left (EBadArg "invalid arguments for range."), []),
-      -- apply print
-      testCase "print1" $
-        runComp (apply "print" [StringVal "Hello world!"]) []
-        @?= (Right NoneVal, ["Hello world!"]),
-      testCase "print2" $
-        runComp (apply "print" [StringVal "Hello", StringVal "world!"]) []
-        @?= (Right NoneVal, ["Hello world!"]),
-      testCase "print3" $
-        runComp (apply "print" [StringVal "Power: >", IntVal 9000]) []
-        @?= (Right NoneVal, ["Power: > 9000"]),
-      testCase "print4" $
-        runComp (apply "print" [IntVal 42, StringVal "foo",
-          ListVal [TrueVal, ListVal []], IntVal (-1)]) []
-        @?= (Right NoneVal, ["42 foo [True, []] -1"]),
-      testCase "print5" $
-        runComp (apply "print" [ListVal [IntVal 1, IntVal 2]]) []
-        @?= (Right NoneVal, ["[1, 2]"])
+    testCase "range1" $
+      runComp (apply "range" [IntVal 3]) []
+      @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
+    testCase "range2" $
+      runComp (apply "range" [IntVal 0, IntVal 3]) []
+      @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
+    testCase "range3" $
+      runComp (apply "range" [IntVal 0, IntVal 3, IntVal 1]) []
+      @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), []),
+    testCase "range4" $
+      runComp (apply "range" [IntVal 0, IntVal 3, IntVal 2]) []
+      @?= (Right (ListVal [IntVal 0, IntVal 2]), []),
+    testCase "range5" $
+      runComp (apply "range" [IntVal (-2), IntVal 3, IntVal 2]) []
+      @?= (Right (ListVal [IntVal (-2), IntVal 0, IntVal 2]), []),
+    testCase "range6" $
+      runComp (apply "range" [IntVal 0]) []
+      @?= (Right (ListVal []), []),
+    testCase "range7" $
+      runComp (apply "range" [IntVal (-1)]) []
+      @?= (Right (ListVal []), []),
+    testCase "range8" $
+      runComp (apply "range" [IntVal 3, IntVal 0]) []
+      @?= (Right (ListVal []), []),
+    testCase "range9" $
+      runComp (apply "range" [IntVal 3, IntVal 0, IntVal (-1)]) []
+      @?= (Right (ListVal [IntVal 3, IntVal 2, IntVal 1]), []),
+    testCase "range10" $
+      runComp (apply "range" [IntVal 3, IntVal 0, IntVal 1]) []
+      @?= (Right (ListVal []), []),
+    testCase "range11" $
+      runComp (apply "range" [StringVal "hello"]) []
+      @?= (Left (EBadArg "invalid arguments for range."), []),
+    testCase "range12" $
+      runComp (apply "range" [IntVal 3, StringVal "hello"]) []
+      @?= (Left (EBadArg "invalid arguments for range."), []),
+    -- apply print
+    testCase "print1" $
+      runComp (apply "print" [StringVal "Hello world!"]) []
+      @?= (Right NoneVal, ["Hello world!"]),
+    testCase "print2" $
+      runComp (apply "print" [StringVal "Hello", StringVal "world!"]) []
+      @?= (Right NoneVal, ["Hello world!"]),
+    testCase "print3" $
+      runComp (apply "print" [StringVal "Power: >", IntVal 9000]) []
+      @?= (Right NoneVal, ["Power: > 9000"]),
+    testCase "print4" $
+      runComp (apply "print" [IntVal 42, StringVal "foo",
+        ListVal [TrueVal, ListVal []], IntVal (-1)]) []
+      @?= (Right NoneVal, ["42 foo [True, []] -1"]),
+    testCase "print5" $
+      runComp (apply "print" [ListVal [IntVal 1, IntVal 2]]) []
+      @?= (Right NoneVal, ["[1, 2]"])
     ],
   testGroup "eval"
     [ -- eval Const
-      testCase "evalConst1" $
-        runComp (eval (Const (IntVal 1))) []
-        @?= (Right (IntVal 1), []),
-      testCase "evalConst2" $
-        runComp (eval (Const (NoneVal))) []
-        @?= (Right NoneVal, []),
-      -- eval Var
-      testCase "evalVar1" $
-        runComp (eval (Var ("x"))) testEnv1
-        @?= (Right (IntVal 2), []),
-      testCase "evalVar2" $
-        runComp (eval (Var ("y"))) testEnv1
-        @?= (Right (IntVal 10), []),
-      testCase "evalVar3" $
-        runComp (eval (Var ("name"))) testEnv1
-        @?= (Right (StringVal "Jim"), []),
-      testCase "evalVar4" $
-        runComp (eval (Var ("w"))) testEnv1
-        @?= (Left (EBadVar "w"), []),
-      -- eval Oper
-      testCase "evalOper1" $
-        runComp (eval (Oper Plus (Const (IntVal 1)) (Const (IntVal 1)))) []
-        @?= (Right (IntVal 2), []),
-      testCase "evalOper2" $
-        runComp (eval (Oper Times (Const (IntVal 2)) (Const (IntVal 2)))) []
-        @?= (Right (IntVal 4), []),
-      testCase "evalOper3" $
-        runComp (eval (Oper Times (Var "x") (Const (IntVal 2)))) testEnv1
-        @?= (Right (IntVal 4), []),
-      testCase "evalOper4" $
-        runComp (eval (Oper Div (Var "z") (Var "x"))) testEnv1
-        @?= (Right (IntVal (-3)), []),
-      testCase "evalOper5" $
-        runComp (eval (Oper Mod (Var "z") (Var "x"))) testEnv1
-        @?= (Right (IntVal 1), []),
-      testCase "evalOper6" $
-        runComp (eval (Oper Eq (Var "name")
-          (Const (StringVal "Jim")))) testEnv1
-        @?= (Right (TrueVal), []),
-      testCase "evalOper7" $
-        runComp (eval (Oper Less (Var "z") (Var "x"))) testEnv1
-        @?= (Right (TrueVal), []),
-      testCase "evalOper8" $
-        runComp (eval (Oper Greater (Var "y") (Var "x"))) testEnv1
-        @?= (Right (TrueVal), []),
-      testCase "evalOper9" $
-        runComp (eval (Oper Greater (Var "y") (Var "x"))) testEnv1
-        @?= (Right (TrueVal), []),
-      testCase "evalOper10" $
-        runComp (eval (Oper In (Var "name")
-          (List [Var "x", Const (StringVal "Jim")]))) testEnv1
-        @?= (Right (TrueVal), []),
-      testCase "evalOper11" $
-        runComp (eval (Oper Plus (Const (IntVal 1)) (Const NoneVal))) []
-        @?= (Left (EBadArg "Plus: Operand mismatch."), []),
-      -- eval Not
-      testCase "evalNot1" $
-        runComp (eval (Not (Const NoneVal))) []
-        @?= (Right TrueVal, []),
-      testCase "evalNot2" $
-        runComp (eval (Not (Var "x"))) testEnv1
-        @?= (Right FalseVal, []),
-      testCase "evalNot3" $
-        runComp (eval (Not (Const (StringVal "")))) testEnv1
-        @?= (Right TrueVal, []),
-      testCase "evalNot4" $
-        runComp (eval (Not (Var "name"))) testEnv1
-        @?= (Right FalseVal, [])
-      -- eval Call
-      -- eval List
-      -- eval Compr
+    testCase "evalConst1" $
+      runComp (eval (Const (IntVal 1))) []
+      @?= (Right (IntVal 1), []),
+    testCase "evalConst2" $
+      runComp (eval (Const (NoneVal))) []
+      @?= (Right NoneVal, []),
+    -- eval Var
+    testCase "evalVar1" $
+      runComp (eval (Var ("x"))) testEnv1
+      @?= (Right (IntVal 2), []),
+    testCase "evalVar2" $
+      runComp (eval (Var ("y"))) testEnv1
+      @?= (Right (IntVal 10), []),
+    testCase "evalVar3" $
+      runComp (eval (Var ("name"))) testEnv1
+      @?= (Right (StringVal "Jim"), []),
+    testCase "evalVar4" $
+      runComp (eval (Var ("w"))) testEnv1
+      @?= (Left (EBadVar "w"), []),
+    -- eval Oper
+    testCase "evalOper1" $
+      runComp (eval (Oper Plus (Const (IntVal 1)) (Const (IntVal 1)))) []
+      @?= (Right (IntVal 2), []),
+    testCase "evalOper2" $
+      runComp (eval (Oper Times (Const (IntVal 2)) (Const (IntVal 2)))) []
+      @?= (Right (IntVal 4), []),
+    testCase "evalOper3" $
+      runComp (eval (Oper Times (Var "x") (Const (IntVal 2)))) testEnv1
+      @?= (Right (IntVal 4), []),
+    testCase "evalOper4" $
+      runComp (eval (Oper Div (Var "z") (Var "x"))) testEnv1
+      @?= (Right (IntVal (-3)), []),
+    testCase "evalOper5" $
+      runComp (eval (Oper Mod (Var "z") (Var "x"))) testEnv1
+      @?= (Right (IntVal 1), []),
+    testCase "evalOper6" $
+      runComp (eval (Oper Eq (Var "name")
+        (Const (StringVal "Jim")))) testEnv1
+      @?= (Right (TrueVal), []),
+    testCase "evalOper7" $
+      runComp (eval (Oper Less (Var "z") (Var "x"))) testEnv1
+      @?= (Right (TrueVal), []),
+    testCase "evalOper8" $
+      runComp (eval (Oper Greater (Var "y") (Var "x"))) testEnv1
+      @?= (Right (TrueVal), []),
+    testCase "evalOper9" $
+      runComp (eval (Oper Greater (Var "y") (Var "x"))) testEnv1
+      @?= (Right (TrueVal), []),
+    testCase "evalOper10" $
+      runComp (eval (Oper In (Var "name")
+        (List [Var "x", Const (StringVal "Jim")]))) testEnv1
+      @?= (Right (TrueVal), []),
+    testCase "evalOper11" $
+      runComp (eval (Oper Plus (Const (IntVal 1)) (Const NoneVal))) []
+      @?= (Left (EBadArg "Plus: Operand mismatch."), []),
+    -- eval Not
+    testCase "evalNot1" $
+      runComp (eval (Not (Const NoneVal))) []
+      @?= (Right TrueVal, []),
+    testCase "evalNot2" $
+      runComp (eval (Not (Var "x"))) testEnv1
+      @?= (Right FalseVal, []),
+    testCase "evalNot3" $
+      runComp (eval (Not (Const (StringVal "")))) testEnv1
+      @?= (Right TrueVal, []),
+    testCase "evalNot4" $
+      runComp (eval (Not (Var "name"))) testEnv1
+      @?= (Right FalseVal, []),
+    testCase "evalNot5" $
+      runComp (eval (Not (List []))) testEnv1
+      @?= (Right TrueVal, []),
+    -- eval Call
+    -- eval List
+    testCase "evalList1" $
+      runComp (eval (List [Var "x", Var "y", Var "z"])) testEnv1
+      @?= (Right (ListVal [IntVal 2, IntVal 10, IntVal (-5)]), []),
+    testCase "evalList2" $
+      runComp (eval (List [])) []
+      @?= (Right (ListVal []), []),
+    testCase "evalList2" $
+      runComp (eval (List [List [Var "x"], List [Var "y"]])) testEnv1
+      @?= (Right (ListVal [ListVal [IntVal 2],ListVal [IntVal 10]]), [])
+    -- eval Compr
     ],
   testGroup "exec and execute"
     [
