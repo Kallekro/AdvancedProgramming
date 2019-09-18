@@ -152,14 +152,12 @@ evalExpList [] = do return []
 eval :: Exp -> Comp Value
 eval (Const v) = return v
 eval (Var vn)  = look vn
-
 eval (Oper op e1 e2) =
   do v1 <- eval e1
      v2 <- eval e2
      case operate op v1 v2 of
        Left err -> abort (EBadArg err)
        Right v  -> return v
-
 eval (Not e) = do
   v <- eval e
   case v of
@@ -169,11 +167,9 @@ eval (Not e) = do
     StringVal s | length s == 0  -> return TrueVal
     IntVal 0 -> return TrueVal
     _ -> return FalseVal
-
 eval (Call f args) = do
   valList <- evalExpList args
   apply f valList
-
 eval (List el) = do
   valList <- evalExpList el
   return (ListVal valList)
