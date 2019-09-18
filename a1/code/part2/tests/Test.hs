@@ -469,8 +469,36 @@ tests =
       @?= (Right (ListVal [ListVal [IntVal 2],ListVal [IntVal 10]]), []),
     testCase "evalList4" $
       runComp (eval (List [Var "w"])) testEnv1
-      @?= (Left (EBadVar "w"), [])
+      @?= (Left (EBadVar "w"), []),
     -- eval Compr
+    testCase "evalCompr1" $
+      runComp (eval (Compr (Const (IntVal 42)) [])) []
+      @?= (Right (IntVal 42), []),
+    testCase "evalCompr2" $
+    runComp (eval (Compr (Const (IntVal 42)) [QIf (Const FalseVal)])) []
+    @?= (Right (ListVal []), []),
+    testCase "evalCompr3" $
+      runComp (eval (Compr (Var "x") [QFor "x" (List [Const (IntVal 1), 
+                                                      Const (IntVal 2)]) ])) []
+      @?= (Right (ListVal [IntVal 1, IntVal 2]), []),
+    testCase "evalCompr4" $
+    runComp (eval (Compr (Const (IntVal 10) ) 
+                   [QFor "x" (List [Const (IntVal 1), Const (IntVal 2)]) ])) []
+    @?= (Right (ListVal [IntVal 10, IntVal 10]), []),
+    testCase "evalCompr5" $
+      runComp (eval (Compr (Var "x") 
+                      [QFor "x" (List [Const (IntVal 1), Const (IntVal 2)]), 
+                       QIf (Oper Greater (Var "x") (Const (IntVal 1) )) ])) []
+      @?= (Right (ListVal [IntVal 2]), []),
+    testCase "evalCompr6" $
+      runComp (eval (Compr (Var "x") 
+                      [QFor "x" (List [Const (IntVal 0)]), 
+                      QIf (Not (Var "x")) ])) []
+      @?= (Right (ListVal [IntVal 0]), []),
+    testCase "evalCompr7" $
+    runComp (eval (Compr (Var "y") 
+                    [QFor "x" (List [Const (IntVal 0),Const (IntVal 1)]) ])) []
+    @?= (Left (EBadVar "y"),[])
     ],
   testGroup "exec and execute"
     [-- exec
