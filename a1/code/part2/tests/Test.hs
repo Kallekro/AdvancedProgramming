@@ -321,8 +321,78 @@ tests =
         @?= (Right NoneVal, ["[1, 2]"])
     ],
   testGroup "eval"
-    [
-
+    [ -- eval Const
+      testCase "evalConst1" $
+        runComp (eval (Const (IntVal 1))) []
+        @?= (Right (IntVal 1), []),
+      testCase "evalConst2" $
+        runComp (eval (Const (NoneVal))) []
+        @?= (Right NoneVal, []),
+      -- eval Var
+      testCase "evalVar1" $
+        runComp (eval (Var ("x"))) testEnv1
+        @?= (Right (IntVal 2), []),
+      testCase "evalVar2" $
+        runComp (eval (Var ("y"))) testEnv1
+        @?= (Right (IntVal 10), []),
+      testCase "evalVar3" $
+        runComp (eval (Var ("name"))) testEnv1
+        @?= (Right (StringVal "Jim"), []),
+      testCase "evalVar4" $
+        runComp (eval (Var ("w"))) testEnv1
+        @?= (Left (EBadVar "w"), []),
+      -- eval Oper
+      testCase "evalOper1" $
+        runComp (eval (Oper Plus (Const (IntVal 1)) (Const (IntVal 1)))) []
+        @?= (Right (IntVal 2), []),
+      testCase "evalOper2" $
+        runComp (eval (Oper Times (Const (IntVal 2)) (Const (IntVal 2)))) []
+        @?= (Right (IntVal 4), []),
+      testCase "evalOper3" $
+        runComp (eval (Oper Times (Var "x") (Const (IntVal 2)))) testEnv1
+        @?= (Right (IntVal 4), []),
+      testCase "evalOper4" $
+        runComp (eval (Oper Div (Var "z") (Var "x"))) testEnv1
+        @?= (Right (IntVal (-3)), []),
+      testCase "evalOper5" $
+        runComp (eval (Oper Mod (Var "z") (Var "x"))) testEnv1
+        @?= (Right (IntVal 1), []),
+      testCase "evalOper6" $
+        runComp (eval (Oper Eq (Var "name")
+          (Const (StringVal "Jim")))) testEnv1
+        @?= (Right (TrueVal), []),
+      testCase "evalOper7" $
+        runComp (eval (Oper Less (Var "z") (Var "x"))) testEnv1
+        @?= (Right (TrueVal), []),
+      testCase "evalOper8" $
+        runComp (eval (Oper Greater (Var "y") (Var "x"))) testEnv1
+        @?= (Right (TrueVal), []),
+      testCase "evalOper9" $
+        runComp (eval (Oper Greater (Var "y") (Var "x"))) testEnv1
+        @?= (Right (TrueVal), []),
+      testCase "evalOper10" $
+        runComp (eval (Oper In (Var "name")
+          (List [Var "x", Const (StringVal "Jim")]))) testEnv1
+        @?= (Right (TrueVal), []),
+      testCase "evalOper11" $
+        runComp (eval (Oper Plus (Const (IntVal 1)) (Const NoneVal))) []
+        @?= (Left (EBadArg "Plus: Operand mismatch."), []),
+      -- eval Not
+      testCase "evalNot1" $
+        runComp (eval (Not (Const NoneVal))) []
+        @?= (Right TrueVal, []),
+      testCase "evalNot2" $
+        runComp (eval (Not (Var "x"))) testEnv1
+        @?= (Right FalseVal, []),
+      testCase "evalNot3" $
+        runComp (eval (Not (Const (StringVal "")))) testEnv1
+        @?= (Right TrueVal, []),
+      testCase "evalNot4" $
+        runComp (eval (Not (Var "name"))) testEnv1
+        @?= (Right FalseVal, [])
+      -- eval Call
+      -- eval List
+      -- eval Compr
     ],
   testGroup "exec and execute"
     [
@@ -336,3 +406,5 @@ tests =
                                               (Const (IntVal 2))]),
                 SExp (Var "hello")]
     crashOut = (["4"], Just (EBadVar "hello"))
+    testEnv1 = [("x", IntVal 2), ("y", IntVal 10), ("z", IntVal (-5)),
+                ("name", StringVal "Jim"), ("y", IntVal 50)]
