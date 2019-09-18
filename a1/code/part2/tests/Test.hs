@@ -410,16 +410,44 @@ tests =
     -- eval Compr
     ],
   testGroup "exec and execute"
-    [
-
-    ],
-  testGroup "Other tests"
-    [testCase "execute crash.boa" $
-      execute crashAST @?= crashOut]]
+    [-- exec
+    testCase "exec1" $
+      runComp (exec []) testEnv1
+      @?= (Right (), []),
+    testCase "exec2" $
+      runComp (exec [SExp (Call "print"
+        [Var "name", Const (StringVal "is my name.")])]) testEnv1
+      @?= (Right (), ["Jim is my name."]),
+    testCase "exec3" $
+      runComp (exec [
+        SDef "height" (Const (IntVal 20)), SExp (Call "print"
+          [Const (StringVal "The tower is"), Var "height",
+          Const (StringVal "meters tall.")])]) testEnv1
+      @?= (Right (), ["The tower is 20 meters tall."]),
+    testCase "exec4" $
+      runComp (exec beforeAfter) []
+      @?= (Left (EBadVar "w"), ["Before crash."]),
+    -- execute
+    testCase "execute1" $
+      execute beforeAfter @?= (["Before crash."], Just (EBadVar "w")),
+    testCase "execute funCompr" $
+      execute funCompr @?= funComprOut,
+    testCase "execute crash.boa" $
+      execute crashAST @?= crashOut
+    ]]
   where
+    testEnv1 = [("x", IntVal 2), ("y", IntVal 10), ("z", IntVal (-5)),
+                ("name", StringVal "Jim"), ("y", IntVal 50)]
     crashAST = [SExp (Call "print" [Oper Plus (Const (IntVal 2))
                                               (Const (IntVal 2))]),
                 SExp (Var "hello")]
     crashOut = (["4"], Just (EBadVar "hello"))
-    testEnv1 = [("x", IntVal 2), ("y", IntVal 10), ("z", IntVal (-5)),
-                ("name", StringVal "Jim"), ("y", IntVal 50)]
+    beforeAfter = [ SExp (Call "print" [Const (StringVal "Before crash.")]),
+                    SExp (Var "w"),
+                    SExp (Call "print" [Const (StringVal "After crash.")])]
+    funCompr = [ SDef "res" (Compr (Oper Plus (Var "x") (Var "y"))
+                        [(QFor "x" (Call "range" [(Const (IntVal 6))])),
+                        (QFor "y" (List [Oper Times (Var "x")
+                                                    (Const (IntVal 2))]))]),
+                 SExp (Call "print" [(Var "res")])]
+    funComprOut = (["[0, 3, 6, 9, 12, 15]"], Nothing)
