@@ -34,7 +34,7 @@ reservedKeywords = ["None", "True", "False", "for", "if", "in", "not"]
 --identTail = alphaNum <|> char '_'
 
 ident :: Parser String
-ident = do 
+ident = do
     c <- identHead
     cs <- many identTail
     let s = (c:cs)
@@ -43,7 +43,7 @@ ident = do
     else return s
   where
     identHead = satisfy (\c -> isLetter c || c == '_')
-    identTail = satisfy (\c -> isDigit c || isLetter c || c == '_')  
+    identTail = satisfy (\c -> isDigit c || isLetter c || c == '_')
 
 numConst :: Parser Int
 numConst = do
@@ -79,35 +79,39 @@ constString = do
   s <- lexeme stringConst
   return $ Const (StringVal s)
 
+var :: Parser Exp
+var = do
+  vname <- lexeme ident
+  return $ Var vname
+
 word :: Parser String
 word = do { c  <- letter;
          do{ cs <- word;
            return (c:cs) }
-         <|> return [c] }  
+         <|> return [c] }
 
 kwExp :: Parser Exp
-kwExp = do
-  kwe <- lexeme word
-  case kwe of
-    "None"  -> return (Const NoneVal)
-    "True"  -> return (Const TrueVal)
-    "False" -> return (Const FalseVal)
+kwExp =
+  do { string "None"; return $ Const NoneVal }
+  <|> do { string "True"; return $ Const TrueVal }
+  <|> do { string "False"; return $ Const FalseVal }
+
 
 operators = ["+","-","*","//","%",
              "==","!=","<","<=",">",">=",
              "in", "not in"]
 
-
-opExp :: Parser Exp
-opExp = do
-  e1 <- lexeme expression
+--opExp :: Parser Exp
+--opExp = do
+--  e1 <- lexeme expression
 
 expression :: Parser Exp
-expression =  
-          constInt 
-          <|> constString 
-          <|> do {vname <- lexeme ident; return $ Var vname}
-          
+expression =
+          constInt
+          <|> constString
+          <|> kwExp
+          <|> var
+
 
 definitionStmt :: Parser Stmt
 definitionStmt = do
@@ -129,6 +133,6 @@ statement = do
   --newline
   return stmt
 
-startParse :: Parser Program 
+startParse :: Parser Program
 startParse = do { spaces ; p <- many1 statement; spaces; eof; return p }
 --startParse = do { spaces; p <- statement `sepBy1` newline ; eof; return p }
