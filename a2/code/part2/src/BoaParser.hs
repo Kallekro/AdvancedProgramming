@@ -84,12 +84,6 @@ var = do
   vname <- lexeme ident
   return $ Var vname
 
-word :: Parser String
-word = do { c  <- letter;
-         do{ cs <- word;
-           return (c:cs) }
-         <|> return [c] }
-
 kwExp :: Parser Exp
 kwExp =
   do { string "None"; return $ Const NoneVal }
@@ -101,6 +95,13 @@ operators = ["+","-","*","//","%",
              "==","!=","<","<=",">",">=",
              "in", "not in"]
 
+operation :: Parser Exp
+operation = do
+  e1 <- lexeme expression
+  spaces
+  op <- string "+"
+  return (Oper Plus e1 e1)
+
 --opExp :: Parser Exp
 --opExp = do
 --  e1 <- lexeme expression
@@ -111,7 +112,7 @@ expression =
           <|> constString
           <|> kwExp
           <|> var
-
+          -- <|> operation
 
 definitionStmt :: Parser Stmt
 definitionStmt = do
