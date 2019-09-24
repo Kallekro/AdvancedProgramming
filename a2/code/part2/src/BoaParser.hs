@@ -97,10 +97,12 @@ operators = ["+","-","*","//","%",
 
 operation :: Parser Exp
 operation = do
-  e1 <- lexeme expression
+  e1 <- expression
   spaces
   op <- string "+"
-  return (Oper Plus e1 e1)
+  spaces
+  e2 <- expression
+  return (Oper Plus e1 e2)
 
 --opExp :: Parser Exp
 --opExp = do
@@ -128,9 +130,9 @@ expression =
           constInt
           <|> constString
           <|> kwExp
-          <|> callFun
+          -- <|> try callFun
           <|> var
-          -- <|> operation
+          <|> operation
 
 definitionStmt :: Parser Stmt
 definitionStmt = do
