@@ -90,7 +90,7 @@ kwExp =
   <|> do { string "True"; return $ Const TrueVal }
   <|> do { string "False"; return $ Const FalseVal }
 
-
+operators :: [String]
 operators = ["+","-","*","//","%",
              "==","!=","<","<=",">",">=",
              "in", "not in"]
@@ -106,11 +106,29 @@ operation = do
 --opExp = do
 --  e1 <- lexeme expression
 
+built_ins :: [String]
+built_ins = ["range", "print"]
+
+lPar :: Parser Char
+lPar = lexeme $ satisfy (\char -> char == '(')
+rPar :: Parser Char
+rPar = lexeme $ satisfy (\char -> char == ')')
+
+callFun :: Parser Exp
+callFun = do
+  fname <- lexeme $ ident
+  if not (fname `elem` built_ins) then
+    unexpected $ "unknown function '" ++ fname ++ "'"
+  else return $ Call fname [(Const NoneVal)]
+  --exp <- (lexeme $ between lPar rPar expression) `sepBy` (char ',')
+  --return $ Call fname exp
+
 expression :: Parser Exp
 expression =
           constInt
           <|> constString
           <|> kwExp
+          <|> callFun
           <|> var
           -- <|> operation
 
@@ -129,11 +147,14 @@ expressionStmt = do
 statement :: Parser Stmt
 statement = do
   stmt <- try definitionStmt <|> expressionStmt
-  spaces
-  --whitespace
-  --newline
+  statementSep
   return stmt
+
+statementSep :: Parser ()
+statementSep = do
+  whitespace
+  satisfy (\char -> char == '\n' || char == ';')
+  spaces
 
 startParse :: Parser Program
 startParse = do { spaces ; p <- many1 statement; spaces; eof; return p }
---startParse = do { spaces; p <- statement `sepBy1` newline ; eof; return p }
