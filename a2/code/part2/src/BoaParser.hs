@@ -12,10 +12,10 @@ import Data.Char
 parseString :: String -> Either ParseError Program
 parseString s = parse startParse "" s
 
--- Zero or more whitespace
+-- Zero or more whitespace (without newline)
 whitespace :: Parser ()
 whitespace = do { many $ oneOf " \t"; return () }
--- One or more whitespace
+-- One or more whitespace (without newline)
 whitespace1 :: Parser ()
 whitespace1 = do { many1 $ oneOf " \t"; return () }
 
@@ -112,9 +112,11 @@ callFun = do
   fname <- lexeme $ ident
   if not (fname `elem` built_ins) then
     unexpected $ "unknown function '" ++ fname ++ "'"
-  else return $ Call fname [(Const NoneVal)]
-  --exp <- (lexeme $ between lPar rPar expression) `sepBy` (char ',')
-  --return $ Call fname exp
+  else do
+    lPar
+    expList <- expression `sepBy` (lexeme $ char ',')
+    rPar
+    return $ Call fname expList
 
 expression :: Parser Exp
 expression =
@@ -139,7 +141,7 @@ expressionStmt = do
 statement :: Parser Stmt
 statement = do
   stmt <- try definitionStmt <|> expressionStmt
-  statementSep
+  (statementSep <|> eof)
   return stmt
 
 statementSep :: Parser ()
