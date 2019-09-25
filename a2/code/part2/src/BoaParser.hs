@@ -1,5 +1,4 @@
 -- Skeleton file for Boa Parser.
-
 module BoaParser (ParseError, parseString) where
 
 import BoaAST
@@ -127,6 +126,12 @@ operation e1 = do
     "not in" -> return $ Not $ Oper In e1 e2
     _ -> unexpected (show op)
 
+notExp :: Parser Exp
+notExp = do
+  lexeme $ string "not"
+  e1 <- lexeme expression
+  return $ Not e1
+
 lBracket :: Parser Char
 lBracket = lexeme $ satisfy (\char -> char == '[')
 rBracket :: Parser Char
@@ -197,6 +202,7 @@ expressionOpt e1 = (do { e2 <- try $ operation e1; expressionOpt e2 })
 
 tNT :: Parser Exp
 tNT = constExp
+  <|> notExp
   <|> kwExp
   <|> (try listExp <|> listComprExp)
   <|> (try callFun <|> varExp)
