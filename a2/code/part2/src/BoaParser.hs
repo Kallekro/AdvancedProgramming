@@ -118,7 +118,7 @@ matchOperator ops =
 operation :: Exp -> Parser Exp
 operation e1 = do
   op <- lexeme $ matchOperator operators
-  e2 <- lexeme expression
+  e2 <- lexeme tNT
   case op of
     "+" -> return $ Oper Plus e1 e2
     "-" -> return $ Oper Minus e1 e2
