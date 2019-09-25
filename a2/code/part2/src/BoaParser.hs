@@ -28,11 +28,6 @@ lexeme p = do
 reservedKeywords :: [String]
 reservedKeywords = ["None", "True", "False", "for", "if", "in", "not"]
 
---identHead :: Parser Char
---identHead = letter <|> char '_'
---identTail :: Parser Char
---identTail = alphaNum <|> char '_'
-
 ident :: Parser String
 ident = do
     c <- identHead
