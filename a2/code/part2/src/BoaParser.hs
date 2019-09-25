@@ -24,6 +24,12 @@ lexeme p = do
   whitespace
   return x
 
+lexeme1 :: Parser a -> Parser a
+lexeme1 p = do
+  x <- p
+  whitespace1
+  return x
+
 reservedKeywords :: [String]
 reservedKeywords = ["None", "True", "False", "for", "if", "in", "not"]
 
@@ -40,11 +46,13 @@ ident = do
     identTail = satisfy (\c -> isDigit c || isLetter c || c == '_')
 
 numConst :: Parser Int
-numConst = do
-  c <- satisfy (\char -> (char > '0' && char <= '9') || char == '-')
-  s <- many digit
-  if c == '-' && (length s) == 0 then unexpected "-"
-  else return $ read (c:s)
+numConst =
+  (do
+    c <- satisfy (\char -> (char > '0' && char <= '9') || char == '-')
+    s <- many digit
+    if c == '-' && (length s) == 0 then unexpected "-"
+    else return $ read (c:s))
+  <|> do {zero <- satisfy (\char -> char == '0'); return $ read [zero]}
 
 stringDelim :: Parser Char
 stringDelim = satisfy (\char -> char == '\'')
@@ -52,7 +60,8 @@ stringDelim = satisfy (\char -> char == '\'')
 -- TODO: Right now \\ is parsed as \\ but should be parsed as \
 -- unintuitively \' is correctly parsed as '
 escapeCodes :: Parser Char
-escapeCodes = char '\\' >> ((char 'n' >> return '\n') <|> oneOf ("\\\'"))
+escapeCodes = char '\\' >> (
+  (char 'n' >> return '\n') <|> oneOf ("\\\'\n"))
 
 nonEscapeCodes :: Parser Char
 nonEscapeCodes = noneOf "\\\'\n"
@@ -85,9 +94,9 @@ varExp = do
 
 kwExp :: Parser Exp
 kwExp =
-  do { string "None"; return $ Const NoneVal }
-  <|> do { string "True"; return $ Const TrueVal }
-  <|> do { string "False"; return $ Const FalseVal }
+  do { lexeme1 $ string "None"; return $ Const NoneVal }
+  <|> do { lexeme1 $ string "True"; return $ Const TrueVal }
+  <|> do { lexeme1 $ string "False"; return $ Const FalseVal }
 
 -- In the following array the order matters,
 -- in particular '<=' and '>=' must come before '<' and '>'
@@ -100,7 +109,7 @@ operators = ["+", "-", "*", "//", "%",
 matchOperator :: [String] -> Parser String
 matchOperator ops =
   case ops of
-    (x:xs) -> try $ string x <|> matchOperator xs
+    (x:xs) -> try (string x) <|> matchOperator xs
     _ -> unexpected "unknown operator"
 
 -- TODO: Look at reducing size, maybe by storing each operator string
@@ -109,7 +118,7 @@ matchOperator ops =
 operation :: Exp -> Parser Exp
 operation e1 = do
   op <- lexeme $ matchOperator operators
-  e2 <- lexeme tNT
+  e2 <- lexeme expression
   case op of
     "+" -> return $ Oper Plus e1 e2
     "-" -> return $ Oper Minus e1 e2
@@ -128,7 +137,7 @@ operation e1 = do
 
 notExp :: Parser Exp
 notExp = do
-  lexeme $ string "not"
+  lexeme1 $ string "not"
   e1 <- lexeme expression
   return $ Not e1
 
@@ -138,7 +147,7 @@ rBracket :: Parser Char
 rBracket = lexeme $ satisfy (\char -> char == ']')
 
 expList :: Parser [Exp]
-expList = tNT `sepBy` (lexeme $ char ',')
+expList = expression `sepBy` (lexeme $ char ',')
 
 listExp :: Parser Exp
 listExp = do
@@ -149,16 +158,16 @@ listExp = do
 
 qualFor :: Parser Qual
 qualFor = do
-  lexeme $ string "for"
+  lexeme1 $ string "for"
   vname <- lexeme ident
-  lexeme $ string "in"
-  e <- tNT
+  lexeme1 $ string "in"
+  e <- expression
   return $ QFor vname e
 
 qualIf :: Parser Qual
 qualIf = do
-  lexeme $ string "if"
-  e <- tNT
+  lexeme1 $ string "if"
+  e <- expression
   return $ QIf e
 
 qualAny :: Parser Qual
@@ -167,7 +176,7 @@ qualAny = qualFor <|> qualIf
 listComprExp :: Parser Exp
 listComprExp = do
   lBracket
-  e <- tNT
+  e <- expression
   q1 <- lexeme qualFor
   qs <- many $ lexeme qualAny
   rBracket
@@ -202,8 +211,8 @@ expressionOpt e1 = (do { e2 <- try $ operation e1; expressionOpt e2 })
 
 tNT :: Parser Exp
 tNT = constExp
-  <|> notExp
-  <|> kwExp
+  <|> try notExp
+  <|> try kwExp
   <|> (try listExp <|> listComprExp)
   <|> (try callFun <|> varExp)
   <|> between lPar rPar expression
