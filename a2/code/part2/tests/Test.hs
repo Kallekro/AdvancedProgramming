@@ -8,7 +8,7 @@ import Test.Tasty.HUnit
 
 main :: IO ()
 main = defaultMain $ localOption (mkTimeout 1000000) tests
-  
+
 
 constInt i = Const (IntVal i)
 constStr s = Const (StringVal s)
@@ -101,15 +101,15 @@ tests =
         Right [SExp (List [Const (IntVal 1), Var "var"])],
     testCase "List comprehension 1" $
       parseString "[ x+1 for x in [4,2] ]" @?=
-        Right [SExp (Compr (Oper Plus (Var "x") (Const (IntVal 1))) 
-                       [QFor "x" (List [Const (IntVal 4), 
+        Right [SExp (Compr (Oper Plus (Var "x") (Const (IntVal 1)))
+                       [QFor "x" (List [Const (IntVal 4),
                                         Const (IntVal 2)])] )],
     testCase "List comprehension 2" $
       parseString "[hello for x in [1,2] if x>1 ]" @?=
-        Right [SExp (Compr (Var "hello") 
-                      [QFor "x" (List [Const (IntVal 1), 
+        Right [SExp (Compr (Var "hello")
+                      [QFor "x" (List [Const (IntVal 1),
                                        Const (IntVal 2)]),
-                       QIf (Oper Greater (Var "x") (Const (IntVal 1)))] 
+                       QIf (Oper Greater (Var "x") (Const (IntVal 1)))]
                     )]
   ],
 
@@ -131,7 +131,7 @@ tests =
         parseString "1+2+3" @?=
           Right [SExp (Oper Plus (Oper Plus (constInt 1) (constInt 2)) (constInt 3))]
     ],
-    
+
     testGroup "Minus" [
       testCase "Simple Minus" $
         parseString "2-2" @?=
@@ -149,7 +149,7 @@ tests =
         parseString "1-2+3" @?=
           Right [SExp (Oper Plus (Oper Minus (constInt 1) (constInt 2)) (constInt 3))]
     ],
-    
+
     testGroup "Times/Multiplication" [
       testCase "Simple multiplication" $
         parseString "3*43" @?=
@@ -159,7 +159,7 @@ tests =
           Right [SExp (Oper Times (constInt 42) (constStr "jaws"))],
       testCase "Binds tighter than plus" $
         parseString "2+2*2" @?=
-          Right [SExp (Oper Plus (constInt 2) 
+          Right [SExp (Oper Plus (constInt 2)
                                  (Oper Times (constInt 2) (constInt 2)))]
     ],
     testGroup "Division" [
@@ -171,7 +171,7 @@ tests =
             Right [SExp (Oper Div (constInt 42) (constStr "jaws"))],
         testCase "Binds tighter than plus" $
           parseString "2+2//2" @?=
-            Right [SExp (Oper Plus (constInt 2) 
+            Right [SExp (Oper Plus (constInt 2)
                                   (Oper Div (constInt 2) (constInt 2)))]
     ],
     testGroup "Mod" [
@@ -183,7 +183,7 @@ tests =
             Right [SExp (Oper Mod (constInt 42) (constStr "jaws"))],
         testCase "Binds tighter than plus" $
           parseString "2+2%2" @?=
-            Right [SExp (Oper Plus (constInt 2) 
+            Right [SExp (Oper Plus (constInt 2)
                                   (Oper Mod (constInt 2) (constInt 2)))]
     ],
     testGroup "Eq" [
@@ -198,10 +198,10 @@ tests =
           Right [SExp (Oper Eq (Const (IntVal (-2))) (Const (IntVal (-2))))],
       testCase "Eq with distinct expressions1" $
         parseString "var == None" @?=
-          Right [SExp (Oper Eq (Var "var") (Const (NoneVal)))],
-      testCase "Left associativity" $
-        parseString "1==2==3" @?=
-          Right [SExp (Oper Eq (Oper Eq (constInt 1) (constInt 2)) (constInt 3))]
+          Right [SExp (Oper Eq (Var "var") (Const (NoneVal)))]
+      --testCase "Left associativity" $
+      --  parseString "1==2==3" @?=
+      --    Right [SExp (Oper Eq (Oper Eq (constInt 1) (constInt 2)) (constInt 3))]
     ],
     testGroup "Less" [
       testCase "Simple less" $
@@ -215,10 +215,10 @@ tests =
           Right [SExp (Oper Less (constInt (-3)) (constInt (-2)))],
       testCase "Eq with distinct expressions1" $
         parseString "var < None" @?=
-          Right [SExp (Oper Less (Var "var") (Const (NoneVal)))],
-      testCase "Left associativity" $
-        parseString "1<2<3" @?=
-          Right [SExp (Oper Less (Oper Less (constInt 1) (constInt 2)) (constInt 3))]
+          Right [SExp (Oper Less (Var "var") (Const (NoneVal)))]
+      --testCase "Left associativity" $
+      --  parseString "1<2<3" @?=
+      --    Right [SExp (Oper Less (Oper Less (constInt 1) (constInt 2)) (constInt 3))]
     ],
     testGroup "Greater" [
       testCase "Simple Greater" $
@@ -232,10 +232,10 @@ tests =
           Right [SExp (Oper Greater (constInt (-3)) (constInt (-2)))],
       testCase "Eq with distinct expressions1" $
         parseString "var > None" @?=
-          Right [SExp (Oper Greater (Var "var") (Const (NoneVal)))],
-      testCase "Left associativity" $
-        parseString "1>2>3" @?=
-          Right [SExp (Oper Greater (Oper Greater (constInt 1) (constInt 2)) (constInt 3))]
+          Right [SExp (Oper Greater (Var "var") (Const (NoneVal)))]
+      --testCase "Left associativity" $
+      --  parseString "1>2>3" @?=
+      --    Right [SExp (Oper Greater (Oper Greater (constInt 1) (constInt 2)) (constInt 3))]
     ],
     testGroup "In" [
       testCase "Simple In" $
@@ -250,17 +250,31 @@ tests =
         parseString "True != False" @?=
           Right [SExp (Not (Oper Eq (Const TrueVal) (Const FalseVal)))],
       testCase "Less or Eq" $
-        parseString "2 <= 3" @?= 
+        parseString "2 <= 3" @?=
           Right [SExp (Not (Oper Greater (constInt 2) (constInt 3)))],
-      testCase "Greater or Eq" $ 
+      testCase "Greater or Eq" $
         parseString "3 >= 2" @?=
           Right [SExp (Not (Oper Less (constInt 3) (constInt 2)))],
       testCase "Not in" $
         parseString "42 not in [156, None]" @?=
-          Right [SExp (Not (Oper In (constInt 42) 
+          Right [SExp (Not (Oper In (constInt 42)
                             (List [constInt 156, Const NoneVal])))]
     ]
+  ],
+
+  testGroup "List Comprehensions" [
+    testGroup "For Quals" [
+      testCase "Simple qual" $
+        parseString "[x for x in [1,2,3]]" @?=
+          Right [SExp (Compr (Var "x")
+            [QFor "x" (List [constInt 1,constInt 2,constInt 3])])],
+      testCase "Simple qual" $
+        parseString "[x for x in [1,2,3] for y in [4,5,6]]" @?=
+          Right [SExp (Compr (Var "x")
+            [QFor "x" (List [constInt 1,constInt 2,constInt 3]),
+             QFor "y" (List [constInt 4,constInt 5,constInt 6])])]
+    ]
   ]
-    
+
   -- end of all tests
   ]
