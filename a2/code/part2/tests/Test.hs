@@ -8,6 +8,10 @@ import Test.Tasty.HUnit
 
 main :: IO ()
 main = defaultMain $ localOption (mkTimeout 1000000) tests
+  
+
+--constInt::Int -> Const (IntVal Int)
+constInt i = Const (IntVal i)
 
 tests =
   testGroup "All tests" [
@@ -66,10 +70,10 @@ tests =
         Right [SExp (Var "variable")],
     testCase "Operation 1" $
       parseString "2 + 2" @?=
-        Right [SExp (Oper Plus (Const (IntVal 2)) (Const (IntVal 2)))],
+        Right [SExp (Oper Plus (constInt 2) (constInt 2))],
     testCase "Operation 2" $
       parseString "var1 // 42" @?=
-        Right [SExp (Oper Div (Var "var1") (Const (IntVal 42)))],
+        Right [SExp (Oper Div (Var "var1") (constInt 42))],
     testCase "Not 1" $
       parseString "not 1" @?=
         Right [SExp (Not (Const (IntVal 1)))],
@@ -106,8 +110,44 @@ tests =
                       [QFor "x" (List [Const (IntVal 1), 
                                        Const (IntVal 2)]),
                        QIf (Oper Greater (Var "x") (Const (IntVal 1)))] 
-                    )],
-  ]
+                    )]
+  ],
 
+  testGroup "Operation tests" [
+    testGroup "Plus" [
+      testCase "Simple Plus" $
+        parseString "2+2" @?=
+          Right [SExp (Oper Plus (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Plus whitespace" $
+        parseString "2   +    2" @?=
+          Right [SExp (Oper Plus (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Negative numers" $
+        parseString "-2 + -2" @?=
+          Right [SExp (Oper Plus (Const (IntVal (-2))) (Const (IntVal (-2))))],
+      testCase "Plus with distinct expressions1" $
+        parseString "var + None" @?=
+          Right [SExp (Oper Plus (Var "var") (Const (NoneVal)))],
+      testCase "Left associativity" $
+        parseString "1+2+3" @?=
+          Right [SExp (Oper Plus (Oper Plus (constInt 1) (constInt 2)) (constInt 3))]
+    ],
+    testGroup "Minus" [
+      testCase "Simple Minus" $
+        parseString "2-2" @?=
+          Right [SExp (Oper Minus (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Minus whitespace" $
+        parseString "2   -    2" @?=
+          Right [SExp (Oper Minus (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Negative Minus" $
+        parseString "-2 - -2" @?=
+          Right [SExp (Oper Minus (Const (IntVal (-2))) (Const (IntVal (-2))))],
+      testCase "Minus with distinct expressions1" $
+        parseString "var - None" @?=
+          Right [SExp (Oper Minus (Var "var") (Const (NoneVal)))],
+      testCase "Left associativity" $
+        parseString "1-2+3" @?=
+          Right [SExp (Oper Plus (Oper Minus (constInt 1) (constInt 2)) (constInt 3))]
+    ]
+  ]
   -- end of all tests
   ]
