@@ -6,7 +6,6 @@ module Main (main) where
 import BoaAST
 import BoaInterp (execute)
 import BoaParser (parseString)
-  
 import System.Environment(getArgs)
 
 run :: Program -> IO ()

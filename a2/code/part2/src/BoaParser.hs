@@ -100,7 +100,7 @@ operators = ["+", "-", "*", "//", "%",
 matchOperator :: [String] -> Parser String
 matchOperator ops =
   case ops of
-    (x:xs) -> try $ string x <|> matchOperator xs
+    (x:xs) -> try (string x) <|> matchOperator xs
     _ -> unexpected "unknown operator"
 
 -- TODO: Look at reducing size, maybe by storing each operator string
@@ -109,7 +109,7 @@ matchOperator ops =
 operation :: Exp -> Parser Exp
 operation e1 = do
   op <- lexeme $ matchOperator operators
-  e2 <- lexeme tNT
+  e2 <- lexeme expression
   case op of
     "+" -> return $ Oper Plus e1 e2
     "-" -> return $ Oper Minus e1 e2
@@ -138,7 +138,7 @@ rBracket :: Parser Char
 rBracket = lexeme $ satisfy (\char -> char == ']')
 
 expList :: Parser [Exp]
-expList = tNT `sepBy` (lexeme $ char ',')
+expList = (lexeme expression) `sepBy` (lexeme $ char ',')
 
 listExp :: Parser Exp
 listExp = do

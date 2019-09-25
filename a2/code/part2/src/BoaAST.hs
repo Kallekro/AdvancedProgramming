@@ -31,7 +31,7 @@ data Qual =
   | QIf Exp
   deriving (Eq, Show, Read)
 
-type Program = [Stmt]  
+type Program = [Stmt]
 
 data Stmt =
     SDef VName Exp

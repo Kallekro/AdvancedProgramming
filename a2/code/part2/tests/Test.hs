@@ -14,17 +14,17 @@ tests =
 
   testGroup "Statements tests" [
     testCase "Single statement1" $
-      parseString "1" @?= 
+      parseString "1" @?=
         Right [SExp (Const (IntVal 1))],
     testCase "Single statement2" $
-      parseString "fourtytwo" @?= 
+      parseString "fourtytwo" @?=
         Right [SExp (Var "fourtytwo")],
     testCase "Two statements" $
-      parseString "4;2" @?= 
+      parseString "4;2" @?=
         Right [SExp (Const (IntVal 4)), SExp (Const (IntVal 2))],
     testCase "Multiple statements" $
         parseString "var1 = 5; var1; var1-5" @?=
-          Right [SDef "var1" (Const (IntVal 5)), SExp (Var "var1"), 
+          Right [SDef "var1" (Const (IntVal 5)), SExp (Var "var1"),
                  SExp (Oper Minus (Var "var1") (Const (IntVal 5)))]
   ],
 
@@ -34,7 +34,7 @@ tests =
         Right [SDef "f1" (Const (IntVal 42))],
     testCase "Identifier complex" $
       parseString "id = (42 + 42) // 2" @?=
-        Right [SDef "id" (Oper Div 
+        Right [SDef "id" (Oper Div
                            (Oper Plus (Const (IntVal 42)) (Const (IntVal 42)))
                            (Const (IntVal 2)))],
     testCase "Expression simple" $
@@ -78,15 +78,15 @@ tests =
         Right [SExp (Not (Const (StringVal "jimbo")))],
     testCase "Parenthesis" $
       parseString "2 * (42 + 2)" @?=
-        Right [SExp (Oper Times (Const (IntVal 2)) 
-                                (Oper Plus (Const (IntVal 42)) 
+        Right [SExp (Oper Times (Const (IntVal 2))
+                                (Oper Plus (Const (IntVal 42))
                                            (Const (IntVal 2))))],
     testCase "Function call one arg" $
       parseString "print(42)" @?=
         Right [SExp (Call "print" [ Const (IntVal 42) ]) ],
     testCase "Function call two args" $
       parseString "print(42,156)" @?=
-        Right [SExp (Call "print" [Const (IntVal 42), 
+        Right [SExp (Call "print" [Const (IntVal 42),
                                    Const (IntVal 156)])],
     testCase "List 1" $
       parseString "[1,5,6]" @?=
@@ -108,6 +108,6 @@ tests =
                        QIf (Oper Greater (Var "x") (Const (IntVal 1)))] 
                     )]
   ]
-  
+
   -- end of all tests
   ]
