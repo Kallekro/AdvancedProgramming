@@ -6,15 +6,17 @@ import BoaAST
 import Text.ParserCombinators.Parsec
 import Data.Char
 
+--type ParseError = String -- you may replace this
+
 parseString :: String -> Either ParseError Program
 parseString s = parse startParse "" s
 
 -- Zero or more whitespace (without newline)
 whitespace :: Parser ()
-whitespace = try comment <|> do { many $ oneOf " \t"; return () }
+whitespace = do { many $ oneOf " \t"; return () }
 -- One or more whitespace (without newline)
 whitespace1 :: Parser ()
-whitespace1 = try comment <|> do { many1 $ oneOf " \t"; return () }
+whitespace1 = do { many1 $ oneOf " \t"; return () }
 
 lexeme :: Parser a -> Parser a
 lexeme p = do
@@ -59,8 +61,7 @@ stringDelim = satisfy (\char -> char == '\'')
 -- unintuitively \' is correctly parsed as '
 escapeCodes :: Parser Char
 escapeCodes = char '\\' >> (
-  (char 'n' >> return '\n') <|>
-  oneOf ("\\\'n"))
+  (char 'n' >> return '\n') <|> oneOf ("\\\'\n"))
 
 nonEscapeCodes :: Parser Char
 nonEscapeCodes = noneOf "\\\'\n"
@@ -103,14 +104,13 @@ kwExp =
 operators :: [String]
 operators = ["+", "-", "*", "//", "%",
              "==", "!=", "<=", ">=",
-             "<", ">", "in"]
+             "<", ">", "in", "not in"]
 
 matchOperator :: [String] -> Parser String
 matchOperator ops =
   case ops of
     (x:xs) -> try (string x) <|> matchOperator xs
-    [] -> try (do {string "not"; whitespace; string "in"; return "not in"})
-          <|> unexpected "unknown operator"
+    _ -> unexpected "unknown operator"
 
 -- TODO: Look at reducing size, maybe by storing each operator string
 -- with their respective operation of type Op and using this.
@@ -135,28 +135,11 @@ operation e1 = do
     "not in" -> return $ Not $ Oper In e1 e2
     _ -> unexpected (show op)
 
-someAfterWhitespaceOrEnclosed :: Parser a -> Parser a
-someAfterWhitespaceOrEnclosed p  =
-  try (do
-    whitespace1
-    e <- p
-    return e)
-  <|> do
-    whitespace
-    e <- between lPar rPar p
-    return e
-
-expAfterWhitespaceOrEnclosed :: Parser Exp
-expAfterWhitespaceOrEnclosed =
-  someAfterWhitespaceOrEnclosed expression
-  <|> do
-    e <- listExp
-    return e
-
 notExp :: Parser Exp
-notExp = string "not" >> do
-  e <- lexeme $ expAfterWhitespaceOrEnclosed
-  return $ Not e
+notExp = do
+  lexeme1 $ string "not"
+  e1 <- lexeme expression
+  return $ Not e1
 
 lBracket :: Parser Char
 lBracket = lexeme $ satisfy (\char -> char == '[')
@@ -175,16 +158,16 @@ listExp = do
 
 qualFor :: Parser Qual
 qualFor = do
-  string "for"
-  vname <- lexeme $ someAfterWhitespaceOrEnclosed ident
-  string "in"
-  e <- lexeme $ expAfterWhitespaceOrEnclosed
+  lexeme1 $ string "for"
+  vname <- lexeme ident
+  lexeme1 $ string "in"
+  e <- expression
   return $ QFor vname e
 
 qualIf :: Parser Qual
 qualIf = do
-  string "if"
-  e <- lexeme expAfterWhitespaceOrEnclosed
+  lexeme1 $ string "if"
+  e <- expression
   return $ QIf e
 
 qualAny :: Parser Qual
@@ -193,7 +176,7 @@ qualAny = qualFor <|> qualIf
 listComprExp :: Parser Exp
 listComprExp = do
   lBracket
-  e <- lexeme expression
+  e <- expression
   q1 <- lexeme qualFor
   qs <- many $ lexeme qualAny
   rBracket
@@ -210,10 +193,13 @@ built_ins = ["range", "print"]
 callFun :: Parser Exp
 callFun = do
   fname <- lexeme $ ident
-  lPar
-  es <- expList
-  rPar
-  return $ Call fname es
+  if not (fname `elem` built_ins) then
+    unexpected $ "unknown function '" ++ fname ++ "'"
+  else do
+    lPar
+    es <- expList
+    rPar
+    return $ Call fname es
 
 expression :: Parser Exp
 expression = do e <- tNT
@@ -225,8 +211,8 @@ expressionOpt e1 = (do { e2 <- try $ operation e1; expressionOpt e2 })
 
 tNT :: Parser Exp
 tNT = constExp
-  <|> notExp
-  <|> kwExp
+  <|> try notExp
+  <|> try kwExp
   <|> (try listExp <|> listComprExp)
   <|> (try callFun <|> varExp)
   <|> between lPar rPar expression
@@ -253,14 +239,14 @@ comment = do
 statement :: Parser Stmt
 statement = do
   stmt <- try definitionStmt <|> expressionStmt
-  statementSep <|> comment <|> eof
+  statementSep <|> eof
   many comment
   return stmt
 
 statementSep :: Parser ()
 statementSep = do
   whitespace
-  satisfy (\char ->char == ';')
+  satisfy (\char -> char == '\n' || char == ';')
   spaces
 
 startParse :: Parser Program
