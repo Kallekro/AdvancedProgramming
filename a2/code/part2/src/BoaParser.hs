@@ -28,11 +28,6 @@ lexeme p = do
 reservedKeywords :: [String]
 reservedKeywords = ["None", "True", "False", "for", "if", "in", "not"]
 
---identHead :: Parser Char
---identHead = letter <|> char '_'
---identTail :: Parser Char
---identTail = alphaNum <|> char '_'
-
 ident :: Parser String
 ident = do
     c <- identHead
@@ -55,6 +50,8 @@ numConst = do
 stringDelim :: Parser Char
 stringDelim = satisfy (\char -> char == '\'')
 
+-- TODO: Right now \\ is parsed as \\ but should be parsed as \
+-- unintuitively \' is correctly parsed as '
 escapeCodes :: Parser Char
 escapeCodes = char '\\' >> ((char 'n' >> return '\n') <|> oneOf ("\\\'"))
 
@@ -79,8 +76,11 @@ constString = do
   s <- lexeme stringConst
   return $ Const (StringVal s)
 
-var :: Parser Exp
-var = do
+constExp :: Parser Exp
+constExp = constInt <|> constString
+
+varExp :: Parser Exp
+varExp = do
   vname <- lexeme ident
   return $ Var vname
 
@@ -90,22 +90,49 @@ kwExp =
   <|> do { string "True"; return $ Const TrueVal }
   <|> do { string "False"; return $ Const FalseVal }
 
+-- In the following array the order matters,
+-- in particular '<=' and '>=' must come before '<' and '>'
+-- since we're matching from left to right in the list.
 operators :: [String]
-operators = ["+","-","*","//","%",
-             "==","!=","<","<=",">",">=",
-             "in", "not in"]
+operators = ["+", "-", "*", "//", "%",
+             "==", "!=", "<=", ">=",
+             "<", ">", "in", "not in"]
 
-operation :: Parser Exp
-operation = do
-  e1 <- lexeme $ otherExp
-  op <- lexeme $ string "+"
-  e2 <- lexeme $ otherExp
-  return $ Oper Plus e1 e2
+matchOperator :: [String] -> Parser String
+matchOperator ops =
+  case ops of
+    (x:xs) -> try $ string x <|> matchOperator xs
+    _ -> unexpected "unknown operator"
 
---opExp :: Parser Exp
---opExp = do
---  e1 <- lexeme expression
+-- TODO: Look at reducing size, maybe by storing each operator string
+-- with their respective operation of type Op and using this.
+-- There is probably gonna be a challenge getting the Not'ed operators to work.
+operation :: Exp -> Parser Exp
+operation e1 = do
+  op <- lexeme $ matchOperator operators
+  e2 <- lexeme tNT
+  case op of
+    "+" -> return $ Oper Plus e1 e2
+    "-" -> return $ Oper Minus e1 e2
+    "*" -> return $ Oper Times e1 e2
+    "//" -> return $ Oper Div e1 e2
+    "%" -> return $ Oper Mod e1 e2
+    "==" -> return $ Oper Eq e1 e2
+    "!=" -> return $ Not $ Oper Eq e1 e2
+    "<" -> return $ Oper Less e1 e2
+    "<=" -> return $ Not $ Oper Greater e1 e2
+    ">" -> return $ Oper Greater e1 e2
+    ">=" -> return $ Not $ Oper Less e1 e2
+    "in" -> return $ Oper In e1 e2
+    "not in" -> return $ Not $ Oper In e1 e2
+    _ -> unexpected (show op)
 
+notExp :: Parser Exp
+notExp = do
+  lexeme $ string "not"
+  e1 <- lexeme expression
+  return $ Not e1
+     
 built_ins :: [String]
 built_ins = ["range", "print"]
 
@@ -121,20 +148,24 @@ callFun = do
     unexpected $ "unknown function '" ++ fname ++ "'"
   else do
     lPar
-    expList <- expression `sepBy` (lexeme $ char ',')
+    expList <- tNT `sepBy` (lexeme $ char ',')
     rPar
     return $ Call fname expList
 
 expression :: Parser Exp
-expression = try operation <|> otherExp
+expression = do e <- tNT
+                expressionOpt e
 
-otherExp :: Parser Exp
-otherExp =
-  constInt
-  <|> constString
+expressionOpt :: Exp -> Parser Exp
+expressionOpt e1 = (do { e2 <- try $ operation e1; expressionOpt e2 })
+                  <|> return e1
+
+tNT :: Parser Exp
+tNT = constExp
+  <|> notExp
   <|> kwExp
-  <|> try callFun
-  <|> var
+  <|> (try callFun <|> varExp)
+  <|> between lPar rPar expression
 
 definitionStmt :: Parser Stmt
 definitionStmt = do
