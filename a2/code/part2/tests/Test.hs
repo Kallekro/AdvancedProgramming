@@ -106,7 +106,7 @@ tests =
                       [QFor "x" (List [Const (IntVal 1), 
                                        Const (IntVal 2)]),
                        QIf (Oper Greater (Var "x") (Const (IntVal 1)))] 
-                    )]
+                    )],
   ]
 
   -- end of all tests
