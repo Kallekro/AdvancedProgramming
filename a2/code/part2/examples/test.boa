@@ -1,0 +1,13 @@
+
+abe = 123;
+
+123 ; 213
+
+print(1, 'abe')
+print(1, 'abe' )
+print(1,'abe')
+print(1 , 'abe')
+print( 1, 'abe')
+print (1, 'abe')
+
+print(range(10))
