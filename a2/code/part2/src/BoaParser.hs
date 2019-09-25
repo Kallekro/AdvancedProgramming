@@ -21,13 +21,7 @@ whitespace1 = do { many1 $ oneOf " \t"; return () }
 lexeme :: Parser a -> Parser a
 lexeme p = do
   x <- p
-  whitespace
-  return x
-
-lexeme1 :: Parser a -> Parser a
-lexeme1 p = do
-  x <- p
-  whitespace1
+  spaces
   return x
 
 reservedKeywords :: [String]
@@ -57,8 +51,6 @@ numConst =
 stringDelim :: Parser Char
 stringDelim = satisfy (\char -> char == '\'')
 
--- TODO: Right now \\ is parsed as \\ but should be parsed as \
--- unintuitively \' is correctly parsed as '
 escapeCodes :: Parser Char
 escapeCodes = char '\\' >> (
   (char 'n' >> return '\n') <|> oneOf ("\\\'\n"))
@@ -98,42 +90,82 @@ kwExp =
   <|> do { lexeme $ string "True"; return $ Const TrueVal }
   <|> do { lexeme $ string "False"; return $ Const FalseVal }
 
--- In the following array the order matters,
--- in particular '<=' and '>=' must come before '<' and '>'
--- since we're matching from left to right in the list.
-operators :: [String]
-operators = ["+", "-", "*", "//", "%",
-             "==", "!=", "<=", ">=",
-             "<", ">", "in", "not in"]
-
 matchOperator :: [String] -> Parser String
 matchOperator ops =
   case ops of
     (x:xs) -> try (string x) <|> matchOperator xs
     _ -> unexpected "unknown operator"
 
--- TODO: Look at reducing size, maybe by storing each operator string
--- with their respective operation of type Op and using this.
--- There is probably gonna be a challenge getting the Not'ed operators to work.
-operation :: Exp -> Parser Exp
-operation e1 = do
-  op <- lexeme $ matchOperator operators
-  e2 <- lexeme tNT
+multiplicative :: Exp -> Bool -> Parser Exp
+multiplicative e1 parFlag = do
+  op2 <- lexeme $ matchOperator ["*", "//", "%"]
+  (e2,_) <- lexeme tNT
+  case (e1, parFlag) of
+    (Oper op1 e1a e1b, False) ->
+      case op2 of
+        "*" -> return $ Oper op1 e1a (Oper Times e1b e2)
+        "//" -> return $ Oper op1 e1a (Oper Div e1b e2)
+        "%" -> return $ Oper op1 e1a (Oper Mod e1b e2)
+        _ -> unexpected (show op2)
+    _ ->
+      case op2 of
+        "*" -> return $ Oper Times e1 e2
+        "//" -> return $ Oper Div e1 e2
+        "%" -> return $ Oper Mod e1 e2
+        _ -> unexpected (show op2)
+
+additive :: Exp -> Parser Exp
+additive e1 = do
+  op <- lexeme $ matchOperator ["+", "-"]
+  (e2,_) <- lexeme tNT
   case op of
     "+" -> return $ Oper Plus e1 e2
     "-" -> return $ Oper Minus e1 e2
-    "*" -> return $ Oper Times e1 e2
-    "//" -> return $ Oper Div e1 e2
-    "%" -> return $ Oper Mod e1 e2
+    _ -> unexpected (show op)
+
+relational :: Exp -> Parser Exp
+relational e1 = do
+  op <- lexeme $ matchOperator [ "==", "!=", "<=", ">=",
+                                 "<", ">", "in", "not in"]
+  (e2,_) <- lexeme tNT
+  case op of
     "==" -> return $ Oper Eq e1 e2
     "!=" -> return $ Not $ Oper Eq e1 e2
-    "<" -> return $ Oper Less e1 e2
     "<=" -> return $ Not $ Oper Greater e1 e2
-    ">" -> return $ Oper Greater e1 e2
     ">=" -> return $ Not $ Oper Less e1 e2
+    "<" -> return $ Oper Less e1 e2
+    ">" -> return $ Oper Greater e1 e2
     "in" -> return $ Oper In e1 e2
     "not in" -> return $ Not $ Oper In e1 e2
     _ -> unexpected (show op)
+
+operationNoRelational :: Exp -> Bool -> Parser Exp
+operationNoRelational e1 parFlag = try (multiplicative e1 parFlag)
+                                   <|> additive e1
+
+operationWithRelational :: Exp -> Bool -> Parser (Exp, Bool)
+operationWithRelational e1 parFlag =
+  try (do {relOp <- relational e1; return (relOp, True)})
+  <|> (do {nonRelOp <- operationNoRelational e1 parFlag;
+           return (nonRelOp, False) })
+
+someAfterWhitespaceOrEnclosed :: Parser a -> Parser a
+someAfterWhitespaceOrEnclosed p  =
+  try (do
+    whitespace1
+    e <- p
+    return e)
+  <|> do
+    whitespace
+    e <- between lPar rPar p
+    return e
+
+expAfterWhitespaceOrEnclosed :: Parser Exp
+expAfterWhitespaceOrEnclosed =
+  someAfterWhitespaceOrEnclosed expression
+  <|> do
+    e <- listExp
+    return e
 
 notExp :: Parser Exp
 notExp = do
@@ -187,9 +219,6 @@ lPar = lexeme $ satisfy (\char -> char == '(')
 rPar :: Parser Char
 rPar = lexeme $ satisfy (\char -> char == ')')
 
-built_ins :: [String]
-built_ins = ["range", "print"]
-
 callFun :: Parser Exp
 callFun = do
   fname <- lexeme $ ident
@@ -202,20 +231,29 @@ callFun = do
     return $ Call fname es
 
 expression :: Parser Exp
-expression = do e <- tNT
-                expressionOpt e
+expression = do (e, parFlag) <- tNT
+                expressionOpt1 e parFlag
 
-expressionOpt :: Exp -> Parser Exp
-expressionOpt e1 = (do { e2 <- try $ operation e1; expressionOpt e2 })
-                  <|> return e1
+expressionOpt1 :: Exp -> Bool -> Parser Exp
+expressionOpt1 e1 parFlag = (
+  do (e2, flag) <- try (operationWithRelational e1 parFlag)
+     if flag then expressionOpt2 e2 parFlag
+     else expressionOpt1 e2 parFlag)
+  <|> return e1
 
-tNT :: Parser Exp
-tNT = constExp
-  <|> try notExp
-  <|> try kwExp
-  <|> (try listExp <|> listComprExp)
-  <|> (try callFun <|> varExp)
-  <|> between lPar rPar expression
+expressionOpt2 :: Exp -> Bool -> Parser Exp
+expressionOpt2 e1 parFlag =
+  (do e2 <- try $ operationNoRelational e1 parFlag
+      expressionOpt2 e2 parFlag)
+  <|> return e1
+
+tNT :: Parser (Exp, Bool)
+tNT = do {e <- constExp; return (e, False)}
+  <|> do {e <- try notExp; return (e, False)}
+  <|> do {e <- try kwExp; return (e, False)}
+  <|> do {e <- (try listExp <|> listComprExp); return (e, False)}
+  <|> do {e <- (try callFun <|> varExp); return (e, False)}
+  <|> do {e <- between lPar rPar expression; return (e, True)}
 
 definitionStmt :: Parser Stmt
 definitionStmt = do
