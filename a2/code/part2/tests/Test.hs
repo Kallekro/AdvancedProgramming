@@ -260,14 +260,6 @@ tests =
           Right [SExp (Not (Oper In (constInt 42) 
                             (List [constInt 156, Const NoneVal])))]
     ]
-  ],
-
-  testGroup "List Comprehensions" [
-    testGroup "For Quals" [
-      testCase "Simple qual" $
-        parseString "[1 for x in [1,2,3]" @?=
-          Right [SExp (constInt 2)]
-    ]
   ]
     
   -- end of all tests
