@@ -244,6 +244,29 @@ tests =
       testCase "In definition" $
         parseString "jim = [1,2]" @?=
           Right [SDef "jim" (List [constInt 1, constInt 2])]
+    ],
+    testGroup "Syntaxy operations" [
+      testCase "Not equal" $
+        parseString "True != False" @?=
+          Right [SExp (Not (Oper Eq (Const TrueVal) (Const FalseVal)))],
+      testCase "Less or Eq" $
+        parseString "2 <= 3" @?= 
+          Right [SExp (Not (Oper Greater (constInt 2) (constInt 3)))],
+      testCase "Greater or Eq" $ 
+        parseString "3 >= 2" @?=
+          Right [SExp (Not (Oper Less (constInt 3) (constInt 2)))],
+      testCase "Not in" $
+        parseString "42 not in [156, None]" @?=
+          Right [SExp (Not (Oper In (constInt 42) 
+                            (List [constInt 156, Const NoneVal])))]
+    ]
+  ],
+
+  testGroup "List Comprehensions" [
+    testGroup "For Quals" [
+      testCase "Simple qual" $
+        parseString "[1 for x in [1,2,3]" @?=
+          Right [SExp (constInt 2)]
     ]
   ]
     
