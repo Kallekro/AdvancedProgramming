@@ -94,9 +94,9 @@ varExp = do
 
 kwExp :: Parser Exp
 kwExp =
-  do { lexeme1 $ string "None"; return $ Const NoneVal }
-  <|> do { lexeme1 $ string "True"; return $ Const TrueVal }
-  <|> do { lexeme1 $ string "False"; return $ Const FalseVal }
+  do { lexeme $ string "None"; return $ Const NoneVal }
+  <|> do { lexeme $ string "True"; return $ Const TrueVal }
+  <|> do { lexeme $ string "False"; return $ Const FalseVal }
 
 -- In the following array the order matters,
 -- in particular '<=' and '>=' must come before '<' and '>'
