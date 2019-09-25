@@ -10,8 +10,8 @@ main :: IO ()
 main = defaultMain $ localOption (mkTimeout 1000000) tests
   
 
---constInt::Int -> Const (IntVal Int)
 constInt i = Const (IntVal i)
+constStr s = Const (StringVal s)
 
 tests =
   testGroup "All tests" [
@@ -131,6 +131,7 @@ tests =
         parseString "1+2+3" @?=
           Right [SExp (Oper Plus (Oper Plus (constInt 1) (constInt 2)) (constInt 3))]
     ],
+    
     testGroup "Minus" [
       testCase "Simple Minus" $
         parseString "2-2" @?=
@@ -147,7 +148,104 @@ tests =
       testCase "Left associativity" $
         parseString "1-2+3" @?=
           Right [SExp (Oper Plus (Oper Minus (constInt 1) (constInt 2)) (constInt 3))]
+    ],
+    
+    testGroup "Times/Multiplication" [
+      testCase "Simple multiplication" $
+        parseString "3*43" @?=
+          Right [SExp (Oper Times (constInt 3) (constInt 43))],
+      testCase "Multiply with distinct expressions" $
+        parseString "42 * 'jaws'" @?=
+          Right [SExp (Oper Times (constInt 42) (constStr "jaws"))],
+      testCase "Binds tighter than plus" $
+        parseString "2+2*2" @?=
+          Right [SExp (Oper Plus (constInt 2) 
+                                 (Oper Times (constInt 2) (constInt 2)))]
+    ],
+    testGroup "Division" [
+      testCase "Simple division" $
+          parseString "3//43" @?=
+            Right [SExp (Oper Div (constInt 3) (constInt 43))],
+        testCase "Divide with distinct expressions" $
+          parseString "42 // 'jaws'" @?=
+            Right [SExp (Oper Div (constInt 42) (constStr "jaws"))],
+        testCase "Binds tighter than plus" $
+          parseString "2+2//2" @?=
+            Right [SExp (Oper Plus (constInt 2) 
+                                  (Oper Div (constInt 2) (constInt 2)))]
+    ],
+    testGroup "Mod" [
+      testCase "Simple Mod" $
+          parseString "3%43" @?=
+            Right [SExp (Oper Mod (constInt 3) (constInt 43))],
+        testCase "Mod with distinct expressions" $
+          parseString "42 % 'jaws'" @?=
+            Right [SExp (Oper Mod (constInt 42) (constStr "jaws"))],
+        testCase "Binds tighter than plus" $
+          parseString "2+2%2" @?=
+            Right [SExp (Oper Plus (constInt 2) 
+                                  (Oper Mod (constInt 2) (constInt 2)))]
+    ],
+    testGroup "Eq" [
+      testCase "Simple equality" $
+        parseString "2==2" @?=
+          Right [SExp (Oper Eq (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Eq whitespace" $
+        parseString "2   ==    2" @?=
+          Right [SExp (Oper Eq (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Negative Eq" $
+        parseString "-2 == -2" @?=
+          Right [SExp (Oper Eq (Const (IntVal (-2))) (Const (IntVal (-2))))],
+      testCase "Eq with distinct expressions1" $
+        parseString "var == None" @?=
+          Right [SExp (Oper Eq (Var "var") (Const (NoneVal)))],
+      testCase "Left associativity" $
+        parseString "1==2==3" @?=
+          Right [SExp (Oper Eq (Oper Eq (constInt 1) (constInt 2)) (constInt 3))]
+    ],
+    testGroup "Less" [
+      testCase "Simple less" $
+        parseString "2<2" @?=
+          Right [SExp (Oper Less (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Less whitespace" $
+        parseString "2   <    2" @?=
+          Right [SExp (Oper Less (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Negative Less" $
+        parseString "-3 < -2" @?=
+          Right [SExp (Oper Less (constInt (-3)) (constInt (-2)))],
+      testCase "Eq with distinct expressions1" $
+        parseString "var < None" @?=
+          Right [SExp (Oper Less (Var "var") (Const (NoneVal)))],
+      testCase "Left associativity" $
+        parseString "1<2<3" @?=
+          Right [SExp (Oper Less (Oper Less (constInt 1) (constInt 2)) (constInt 3))]
+    ],
+    testGroup "Greater" [
+      testCase "Simple Greater" $
+        parseString "2>2" @?=
+          Right [SExp (Oper Greater (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Greater whitespace" $
+        parseString "2   >    2" @?=
+          Right [SExp (Oper Greater (Const (IntVal 2)) (Const (IntVal 2)))],
+      testCase "Negative Greater" $
+        parseString "-3 > -2" @?=
+          Right [SExp (Oper Greater (constInt (-3)) (constInt (-2)))],
+      testCase "Eq with distinct expressions1" $
+        parseString "var > None" @?=
+          Right [SExp (Oper Greater (Var "var") (Const (NoneVal)))],
+      testCase "Left associativity" $
+        parseString "1>2>3" @?=
+          Right [SExp (Oper Greater (Oper Greater (constInt 1) (constInt 2)) (constInt 3))]
+    ],
+    testGroup "In" [
+      testCase "Simple In" $
+        parseString "2 in [2,3]" @?=
+          Right [SExp (Oper In (constInt 2) (List [constInt 2, constInt 3]))],
+      testCase "In definition" $
+        parseString "jim = [1,2]" @?=
+          Right [SDef "jim" (List [constInt 1, constInt 2])]
     ]
   ]
+    
   -- end of all tests
   ]
