@@ -131,14 +131,55 @@ notExp = do
   lexeme $ string "not"
   e1 <- lexeme expression
   return $ Not e1
-     
-built_ins :: [String]
-built_ins = ["range", "print"]
+
+lBracket :: Parser Char
+lBracket = lexeme $ satisfy (\char -> char == '[')
+rBracket :: Parser Char
+rBracket = lexeme $ satisfy (\char -> char == ']')
+
+expList :: Parser [Exp]
+expList = tNT `sepBy` (lexeme $ char ',')
+
+listExp :: Parser Exp
+listExp = do
+  lBracket
+  es <- expList
+  rBracket
+  return $ List es
+
+qualFor :: Parser Qual
+qualFor = do
+  lexeme $ string "for"
+  vname <- lexeme ident
+  lexeme $ string "in"
+  e <- tNT
+  return $ QFor vname e
+
+qualIf :: Parser Qual
+qualIf = do
+  lexeme $ string "if"
+  e <- tNT
+  return $ QIf e
+
+qualAny :: Parser Qual
+qualAny = qualFor <|> qualIf
+
+listComprExp :: Parser Exp
+listComprExp = do
+  lBracket
+  e <- tNT
+  q1 <- lexeme qualFor
+  qs <- many $ lexeme qualAny
+  rBracket
+  return $ Compr e (q1:qs)
 
 lPar :: Parser Char
 lPar = lexeme $ satisfy (\char -> char == '(')
 rPar :: Parser Char
 rPar = lexeme $ satisfy (\char -> char == ')')
+
+built_ins :: [String]
+built_ins = ["range", "print"]
 
 callFun :: Parser Exp
 callFun = do
@@ -147,9 +188,9 @@ callFun = do
     unexpected $ "unknown function '" ++ fname ++ "'"
   else do
     lPar
-    expList <- tNT `sepBy` (lexeme $ char ',')
+    es <- expList
     rPar
-    return $ Call fname expList
+    return $ Call fname es
 
 expression :: Parser Exp
 expression = do e <- tNT
@@ -163,6 +204,7 @@ tNT :: Parser Exp
 tNT = constExp
   <|> notExp
   <|> kwExp
+  <|> (try listExp <|> listComprExp)
   <|> (try callFun <|> varExp)
   <|> between lPar rPar expression
 
@@ -178,10 +220,18 @@ expressionStmt = do
   exp <- lexeme expression
   return $ SExp exp
 
+comment :: Parser ()
+comment = do
+  satisfy (\char -> char == '#')
+  many $ noneOf "\n"
+  (newline >> return ()) <|> eof
+  try (spaces >> eof) <|> spaces
+
 statement :: Parser Stmt
 statement = do
   stmt <- try definitionStmt <|> expressionStmt
-  (statementSep <|> eof)
+  statementSep <|> eof
+  many comment
   return stmt
 
 statementSep :: Parser ()
@@ -191,4 +241,8 @@ statementSep = do
   spaces
 
 startParse :: Parser Program
-startParse = do { spaces ; p <- many1 statement; spaces; eof; return p }
+startParse = do
+  spaces
+  many comment
+  p <- many1 statement
+  spaces >> eof >> return p
