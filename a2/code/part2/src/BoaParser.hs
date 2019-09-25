@@ -6,17 +6,15 @@ import BoaAST
 import Text.ParserCombinators.Parsec
 import Data.Char
 
---type ParseError = String -- you may replace this
-
 parseString :: String -> Either ParseError Program
 parseString s = parse startParse "" s
 
 -- Zero or more whitespace (without newline)
 whitespace :: Parser ()
-whitespace = do { many $ oneOf " \t"; return () }
+whitespace = try comment <|> do { many $ oneOf " \t"; return () }
 -- One or more whitespace (without newline)
 whitespace1 :: Parser ()
-whitespace1 = do { many1 $ oneOf " \t"; return () }
+whitespace1 = try comment <|> do { many1 $ oneOf " \t"; return () }
 
 lexeme :: Parser a -> Parser a
 lexeme p = do
@@ -61,7 +59,8 @@ stringDelim = satisfy (\char -> char == '\'')
 -- unintuitively \' is correctly parsed as '
 escapeCodes :: Parser Char
 escapeCodes = char '\\' >> (
-  (char 'n' >> return '\n') <|> oneOf ("\\\'\n"))
+  (char 'n' >> return '\n') <|>
+  oneOf ("\\\'n"))
 
 nonEscapeCodes :: Parser Char
 nonEscapeCodes = noneOf "\\\'\n"
@@ -211,13 +210,10 @@ built_ins = ["range", "print"]
 callFun :: Parser Exp
 callFun = do
   fname <- lexeme $ ident
-  if not (fname `elem` built_ins) then
-    unexpected $ "unknown function '" ++ fname ++ "'"
-  else do
-    lPar
-    es <- expList
-    rPar
-    return $ Call fname es
+  lPar
+  es <- expList
+  rPar
+  return $ Call fname es
 
 expression :: Parser Exp
 expression = do e <- tNT
@@ -229,8 +225,8 @@ expressionOpt e1 = (do { e2 <- try $ operation e1; expressionOpt e2 })
 
 tNT :: Parser Exp
 tNT = constExp
-  <|> try notExp
-  <|> try kwExp
+  <|> notExp
+  <|> kwExp
   <|> (try listExp <|> listComprExp)
   <|> (try callFun <|> varExp)
   <|> between lPar rPar expression
