@@ -1,4 +1,3 @@
--- Skeleton file for Boa Parser.
 module BoaParser (ParseError, parseString) where
 
 import BoaAST
@@ -52,7 +51,7 @@ stringDelim = satisfy (\char -> char == '\'')
 escapeCodes :: Parser Char
 escapeCodes = char '\\' >> (
   (char 'n' >> return '\n') <|>
-  oneOf ("\\\'n"))
+  oneOf ("\\\'\n"))
 
 nonEscapeCodes :: Parser Char
 nonEscapeCodes = noneOf "\\\'\n"
@@ -93,7 +92,7 @@ matchOperator :: [String] -> Parser String
 matchOperator ops =
   case ops of
     (x:xs) -> try (string x) <|> matchOperator xs
-    [] -> try (do {string "not"; whitespace; string "in"; return "not in"})
+    [] -> try (do {string "not"; whitespace1; string "in"; return "not in"})
           <|> unexpected "unknown operator"
 
 multiplicative :: Exp -> Bool -> Parser Exp
