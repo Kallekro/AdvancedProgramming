@@ -55,6 +55,8 @@ numConst = do
 stringDelim :: Parser Char
 stringDelim = satisfy (\char -> char == '\'')
 
+-- TODO: Right now \\ is parsed as \\ but should be parsed as \
+-- unintuitively \' is correctly parsed as '
 escapeCodes :: Parser Char
 escapeCodes = char '\\' >> ((char 'n' >> return '\n') <|> oneOf ("\\\'"))
 
