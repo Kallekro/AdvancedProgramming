@@ -91,7 +91,22 @@ tests =
     testCase "List 1" $
       parseString "[1,5,6]" @?=
         Right [SExp (List [Const (IntVal 1), Const (IntVal 5),
-                           Const (IntVal 6)])]
+                           Const (IntVal 6)])],
+    testCase "List 2" $
+      parseString "[1, var]" @?=
+        Right [SExp (List [Const (IntVal 1), Var "var"])],
+    testCase "List comprehension 1" $
+      parseString "[ x+1 for x in [4,2] ]" @?=
+        Right [SExp (Compr (Oper Plus (Var "x") (Const (IntVal 1))) 
+                       [QFor "x" (List [Const (IntVal 4), 
+                                        Const (IntVal 2)])] )],
+    testCase "List comprehension 2" $
+      parseString "[hello for x in [1,2] if x>1 ]" @?=
+        Right [SExp (Compr (Var "hello") 
+                      [QFor "x" (List [Const (IntVal 1), 
+                                       Const (IntVal 2)]),
+                       QIf (Oper Greater (Var "x") (Const (IntVal 1)))] 
+                    )]
   ]
   
   -- end of all tests
