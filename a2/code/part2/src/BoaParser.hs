@@ -1,5 +1,4 @@
 -- Skeleton file for Boa Parser.
-
 module BoaParser (ParseError, parseString) where
 
 import BoaAST

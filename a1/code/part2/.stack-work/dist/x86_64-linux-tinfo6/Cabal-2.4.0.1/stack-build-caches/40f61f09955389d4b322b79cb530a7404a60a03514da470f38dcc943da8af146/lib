@@ -1,0 +1,20 @@
+/home/bcvb/Documents/school/datalogi-cs/AP/AP-git/a1/code/part2/package.yaml:
+  hash: 16a41c66717f9bfa88159dbc8dc94a8f606d6a75546ed3cf6fe7e53e9c276d6a
+  size: 664
+  modtime: 1568713717
+/home/bcvb/Documents/school/datalogi-cs/AP/AP-git/a1/code/part2/src/Main.hs:
+  hash: 3e799120d5e3df11cbf39660864f618cc08e45bae362aa46023e9be53169a8c6
+  size: 664
+  modtime: 1568713717
+/home/bcvb/Documents/school/datalogi-cs/AP/AP-git/a1/code/part2/src/BoaInterp.hs:
+  hash: 0047c58f3cc2824f60a8dc6164ab285438ce7402c0506d0a0931fe42e702e1b1
+  size: 6873
+  modtime: 1568816500
+/home/bcvb/Documents/school/datalogi-cs/AP/AP-git/a1/code/part2/boa.cabal:
+  hash: 020a0a670a1073f3797de3a8ac73d33219a97533532660e73d5b74a391aa1fa2
+  size: 979
+  modtime: 1568713717
+/home/bcvb/Documents/school/datalogi-cs/AP/AP-git/a1/code/part2/src/BoaAST.hs:
+  hash: b438ec2facee1047765b964f9e80f0797ae1d1efbc726a952094edcc9312ec63
+  size: 687
+  modtime: 1568210042

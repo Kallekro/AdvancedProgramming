@@ -1,0 +1,4 @@
+ -- eval Call
+      testCase "evalCall1" $
+        runComp (eval (Call "range" [(Const (IntVal 3))] )) []
+        @?= (Right (ListVal [IntVal 0, IntVal 1, IntVal 2]), [])
