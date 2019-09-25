@@ -104,13 +104,14 @@ kwExp =
 operators :: [String]
 operators = ["+", "-", "*", "//", "%",
              "==", "!=", "<=", ">=",
-             "<", ">", "in", "not in"]
+             "<", ">", "in"]
 
 matchOperator :: [String] -> Parser String
 matchOperator ops =
   case ops of
     (x:xs) -> try (string x) <|> matchOperator xs
-    _ -> unexpected "unknown operator"
+    [] -> try (do {string "not"; whitespace; string "in"; return "not in"})
+          <|> unexpected "unknown operator"
 
 -- TODO: Look at reducing size, maybe by storing each operator string
 -- with their respective operation of type Op and using this.
@@ -118,7 +119,7 @@ matchOperator ops =
 operation :: Exp -> Parser Exp
 operation e1 = do
   op <- lexeme $ matchOperator operators
-  e2 <- lexeme expression
+  e2 <- lexeme tNT
   case op of
     "+" -> return $ Oper Plus e1 e2
     "-" -> return $ Oper Minus e1 e2
@@ -135,11 +136,28 @@ operation e1 = do
     "not in" -> return $ Not $ Oper In e1 e2
     _ -> unexpected (show op)
 
+someAfterWhitespaceOrEnclosed :: Parser a -> Parser a
+someAfterWhitespaceOrEnclosed p  =
+  try (do
+    whitespace1
+    e <- p
+    return e)
+  <|> do
+    whitespace
+    e <- between lPar rPar p
+    return e
+
+expAfterWhitespaceOrEnclosed :: Parser Exp
+expAfterWhitespaceOrEnclosed =
+  someAfterWhitespaceOrEnclosed expression
+  <|> do
+    e <- listExp
+    return e
+
 notExp :: Parser Exp
-notExp = do
-  lexeme1 $ string "not"
-  e1 <- lexeme expression
-  return $ Not e1
+notExp = string "not" >> do
+  e <- lexeme $ expAfterWhitespaceOrEnclosed
+  return $ Not e
 
 lBracket :: Parser Char
 lBracket = lexeme $ satisfy (\char -> char == '[')
@@ -158,16 +176,16 @@ listExp = do
 
 qualFor :: Parser Qual
 qualFor = do
-  lexeme1 $ string "for"
-  vname <- lexeme ident
-  lexeme1 $ string "in"
-  e <- expression
+  string "for"
+  vname <- lexeme $ someAfterWhitespaceOrEnclosed ident
+  string "in"
+  e <- lexeme $ expAfterWhitespaceOrEnclosed
   return $ QFor vname e
 
 qualIf :: Parser Qual
 qualIf = do
-  lexeme1 $ string "if"
-  e <- expression
+  string "if"
+  e <- lexeme expAfterWhitespaceOrEnclosed
   return $ QIf e
 
 qualAny :: Parser Qual
@@ -176,7 +194,7 @@ qualAny = qualFor <|> qualIf
 listComprExp :: Parser Exp
 listComprExp = do
   lBracket
-  e <- expression
+  e <- lexeme expression
   q1 <- lexeme qualFor
   qs <- many $ lexeme qualAny
   rBracket
@@ -239,14 +257,14 @@ comment = do
 statement :: Parser Stmt
 statement = do
   stmt <- try definitionStmt <|> expressionStmt
-  statementSep <|> eof
+  statementSep <|> comment <|> eof
   many comment
   return stmt
 
 statementSep :: Parser ()
 statementSep = do
   whitespace
-  satisfy (\char -> char == '\n' || char == ';')
+  satisfy (\char ->char == ';')
   spaces
 
 startParse :: Parser Program
