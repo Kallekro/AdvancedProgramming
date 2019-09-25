@@ -152,13 +152,13 @@ qualFor = do
   lexeme $ string "for"
   vname <- lexeme ident
   lexeme $ string "in"
-  e <- tNT
+  e <- lexeme expression
   return $ QFor vname e
 
 qualIf :: Parser Qual
 qualIf = do
   lexeme $ string "if"
-  e <- tNT
+  e <- lexeme expression
   return $ QIf e
 
 qualAny :: Parser Qual
@@ -167,7 +167,7 @@ qualAny = qualFor <|> qualIf
 listComprExp :: Parser Exp
 listComprExp = do
   lBracket
-  e <- tNT
+  e <- lexeme expression
   q1 <- lexeme qualFor
   qs <- many $ lexeme qualAny
   rBracket
