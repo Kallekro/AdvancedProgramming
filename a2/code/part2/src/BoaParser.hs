@@ -158,7 +158,7 @@ qualFor = do
 qualIf :: Parser Qual
 qualIf = do
   lexeme $ string "if"
-  e <- lexeme expression
+  e <- lexeme expression 
   return $ QIf e
 
 qualAny :: Parser Qual
