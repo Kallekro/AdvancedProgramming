@@ -1,0 +1,16 @@
+/home/kalel/Documents/Skole/AP/ap_git/a2/code/part1/package.yaml:
+  hash: e61f4d0bceb75d96ab66b2a63886ce1d74f9c144cf475d384c5d34d81b6a17e3
+  size: 391
+  modtime: 1568806187
+/home/kalel/Documents/Skole/AP/ap_git/a2/code/part1/warmup.cabal:
+  hash: a157f718df5e9239b94c0d64cf144647f27358ceb5203dee7a4177f296b6021c
+  size: 501
+  modtime: 1569143247
+/home/kalel/Documents/Skole/AP/ap_git/a2/code/part1/src/WarmupReadP.hs:
+  hash: 6d9a57de2abe9611b0b1594d1116952241f64e7c7c30f81cde5fe5054aea7289
+  size: 2431
+  modtime: 1569143265
+/home/kalel/Documents/Skole/AP/ap_git/a2/code/part1/src/WarmupParsec.hs:
+  hash: b0289b72965b59d50e0e08fd74bcc9929cc4600559e9b687d850777968791d3c
+  size: 662
+  modtime: 1568806133
