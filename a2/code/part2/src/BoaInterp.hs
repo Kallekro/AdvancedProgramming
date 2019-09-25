@@ -62,12 +62,6 @@ truthy (ListVal l) = (length l) /= 0
 operate :: Op -> Value -> Value -> Either String Value
 --Plus
 operate Plus (IntVal v1) (IntVal v2) = Right (IntVal (v1 + v2))
--- In python the '+' operator works between strings, strings and ints and lists
--- which we started by implementing, but then onlineTA complained.
--- operate Plus (StringVal s1) (StringVal s2) = Right (StringVal (s1 ++ s2))
--- operate Plus (StringVal s) (IntVal i) = Right (StringVal (s ++ (show i)))
--- operate Plus (IntVal i) (StringVal s) = Right (StringVal ((show i) ++ s))
--- operate Plus (ListVal l1) (ListVal l2) = Right (ListVal (l1 ++ l2))
 --Minus
 operate Minus (IntVal v1) (IntVal v2) = Right (IntVal (v1 - v2))
 --Times
