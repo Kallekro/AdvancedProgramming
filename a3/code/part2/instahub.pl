@@ -64,54 +64,57 @@ outcast([person(Z,ZF)|Gs], X) :-
     concat(Gs, [person(Z,ZF)], Gnew),
     outcast(Gnew, X).
 
-% friendly(G, X)
-friendly(G, X) :- friendlyHelper(G, G, X).
+% allFollowers(G, X, L)
+allFollowers(G, X, L) :- allFollowersWorker(G, G, X, [], L).
 
-friendlyHelper(_, [], _).
-friendlyHelper(Gorg, [person(Y, _)|Gs], X) :-
-    different(Gorg, X, Y),
+% allFollowersWorker(Gorg, G, X, L1, L2)
+allFollowersWorker(_, [], _, L, L).
+allFollowersWorker(Gorg, [person(Y, _)|Gs], X, L, [Y|Lout]) :-
+    different(Gorg, Y, X),
     follows(Gorg, Y, X),
-    follows(Gorg, X, Y),
-    friendlyHelper(Gorg, Gs, X).
+    allFollowersWorker(Gorg, Gs, X, L, Lout).
+allFollowersWorker(Gorg, [person(Y, [])|Gs], X, L, Lout) :-
+    different(Gorg, Y, X),
+    allFollowersWorker(Gorg, Gs, X, L, Lout).
+allFollowersWorker(Gorg, [person(Y, [YF|YFs])|Gs], X, L, Lout) :-
+    different(Gorg, Y, X),
+    different(Gorg, YF, X),
+    allFollowersWorker(Gorg, [person(Y, YFs)|Gs], X, L, Lout).
+allFollowersWorker(Gorg, [person(X, _)|Gs], X, L, Lout) :-
+    allFollowersWorker(Gorg, Gs, X, L, Lout).
 
-friendlyHelper(Gorg, [person(Z, [])|Gs], X) :-
-    different(Gorg, Z, X),
-    friendlyHelper(Gorg, Gs, X).
+% followsAll(G, X, L)
+followsAll(_, _, []).
+followsAll(G, X, [L|Ls]) :- follows(G, X, L), followsAll(G, X, Ls).
 
-friendlyHelper(Gorg, [person(Z, [ZF|ZFs])|Gs], X) :-
-    different(Gorg, Z, X),
-    different(Gorg, ZF, X),
-    friendlyHelper(Gorg, [person(Z, ZFs)|Gs], X).
+% friendly(G, X)
+friendly(G, X) :- allFollowers(G, X, L), followsAll(G, X, L).
 
-friendlyHelper(Gorg, [person(X,_),Y|Gs], X) :-
-    friendlyHelper(Gorg, [Y|Gs], X).
+% ignoresAll(G, X, L)
+ignoresAll(_, _, []).
+ignoresAll(G, X, [L|Ls]) :- ignores(G, X, L), ignoresAll(G, X, Ls).
 
 % hostile(G, X)
-hostile(G, X) :- hostileHelper(G, G, X).
-
-hostileHelper(_, [], _).
-hostileHelper(Gorg, [person(Y, _)|Gs], X) :-
-    different(Gorg, X, Y),
-    follows(Gorg, Y, X),
-    ignores(Gorg, X, Y),
-    hostileHelper(Gorg, Gs, X).
-
-hostileHelper(Gorg, [person(Z, [])|Gs], X) :-
-    different(Gorg, Z, X),
-    hostileHelper(Gorg, Gs, X).
-
-hostileHelper(Gorg, [person(Z, [ZF|ZFs])|Gs], X) :-
-    different(Gorg, Z, X),
-    different(Gorg, ZF, X),
-    hostileHelper(Gorg, [person(Z, ZFs)|Gs], X).
-
-hostileHelper(Gorg, [person(X,_),Y|Gs], X) :-
-    hostileHelper(Gorg, [Y|Gs], X).
-
+hostile(G, X) :- allFollowers(G, X, L), ignoresAll(G, X, L).
 
 %%% level 2 %%%
 
 % aware(G, X, Y)
+
+aware(G, X, Y) :- follows(G, X, Y).
+
+aware([person(X,[XF|_])|Gs], X, Y) :-
+    different([person(X,[XF|_])|Gs], X, Y),
+    aware(Gs, XF, Y). % tried to remove cycles here
+
+aware([person(X,[_|XFs])|Gs], X, Y) :-
+    different([person(X,[_|XFs])|Gs], X, Y),
+    aware([person(X,XFs)|Gs], X, Y).
+
+aware([person(Z,ZF)|Gs], X, Y) :-
+    different([person(Z,ZF)|Gs], Z, X),
+    concat(Gs, [person(Z,ZF)], Gnew),
+    aware(Gnew, X, Y).
 
 % ignorant(G, X, Y)
 

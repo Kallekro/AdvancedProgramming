@@ -90,7 +90,17 @@ test(hostile1, [nondet]) :-
 test(hostile2, [fail]) :-
     g1(G), hostile(G, kara).
 
-test(hostile3, [set(X == [oliver])]) :-
+test(hostile3, [set(X == [oliver, bruce])]) :-
     g1(G), hostile(G, X).
+
+% aware
+test(aware1, [nondet]) :-
+    g1(G), aware(G, bruce, kara).
+
+test(aware2, [fail]) :-
+    g1(G), aware(G, kara, bruce).
+
+test(aware3, [set(X==[bruce, barry, clark, oliver])]) :-
+    g1(G), aware(G, X, kara).
 
 :- end_tests(instahub).
