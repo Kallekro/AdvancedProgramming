@@ -15,6 +15,9 @@ g2([person(batman, [green_arrow, superman]),
     person(flash, [green_arrow, supergirl]),
     person(superman, [green_arrow, supergirl])]).
 
+g3([person(axel, [])]).
+g4([person(axel, [])]).
+
 :- begin_tests(instahub).
 
 % follows
@@ -100,7 +103,44 @@ test(aware1, [nondet]) :-
 test(aware2, [fail]) :-
     g1(G), aware(G, kara, bruce).
 
-test(aware3, [set(X==[bruce, barry, clark, oliver])]) :-
+test(aware3, [fail]) :-
+    g1(G), aware(G, kara, kara).
+
+test(aware4, [set(X==[bruce, barry, clark, oliver])]) :-
     g1(G), aware(G, X, kara).
+
+% ignorant
+test(ignorant1, [nondet]) :-
+    g1(G), ignorant(G, kara, bruce).
+
+test(ignorant2, [fail]) :-
+    g1(G), ignorant(G, bruce, kara).
+
+test(ignorant3, [set(X==[bruce])]) :-
+    g1(G), ignorant(G, _, X).
+
+% same_world
+test(same_world1, [nondet]) :-
+    g1(G), g2(H), same_world(G, H, _).
+
+test(same_world2, [fail]) :-
+    g1(G), g3(H), same_world(G, H, _).
+
+test(same_world3, (K==[p(kara, supergirl),
+                       p(bruce, batman),
+                       p(barry, flash),
+                       p(clark, superman),
+                       p(oliver, green_arrow)])) :-
+    g1(G), g2(H), same_world(G, H, K).
+
+test(same_world4, [nondet]) :-
+    g3(G), g4(H), same_world(G, H, _).
+
+test(same_world5, [fail]) :-
+    g1(G), same_world(G, [], _).
+
+test(same_world6, [fail]) :-
+    g1(H), same_world([], H, _).
+
 
 :- end_tests(instahub).
