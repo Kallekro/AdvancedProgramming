@@ -98,19 +98,13 @@ ignoresAll(G, X, [L|Ls]) :- ignores(G, X, L), ignoresAll(G, X, Ls).
 hostile(G, X) :- allFollowers(G, X, L), ignoresAll(G, X, L).
 
 %%% level 2 %%%
-
-% aware(G, X, Y)
-
 aware(G, X, Y) :- follows(G, X, Y).
-
 aware([person(X,[XF|_])|Gs], X, Y) :-
     different([person(X,[XF|_])|Gs], X, Y),
     aware(Gs, XF, Y). % tried to remove cycles here
-
 aware([person(X,[_|XFs])|Gs], X, Y) :-
     different([person(X,[_|XFs])|Gs], X, Y),
     aware([person(X,XFs)|Gs], X, Y).
-
 aware([person(Z,ZF)|Gs], X, Y) :-
     different([person(Z,ZF)|Gs], Z, X),
     concat(Gs, [person(Z,ZF)], Gnew),
@@ -118,25 +112,25 @@ aware([person(Z,ZF)|Gs], X, Y) :-
 
 
 % allAware(G, X, L)
-allAware(G, X, L) :- allAwareWorker(G, G, X, [], L).
-
-%insertIfAware(G, X, Y, Lin, [Y|Lin]) :-
-
-% allAwareWorker(Gorg, G, X, L1, L2)
-allAwareWorker(_, [], _, L, L).
-allAwareWorker(Gorg, [person(Y, _)|Gs], X, L, [Y|Lout]) :-
-    different(Gorg, Y, X),
-    aware(Gorg, X, Y),
-    allAwareWorker(Gorg, Gs, X, L, Lout).
-allAwareWorker(Gorg, [person(Y, [])|Gs], X, L, Lout) :-
-    different(Gorg, Y, X),
-    allAwareWorker(Gorg, Gs, X, L, Lout).
-allAwareWorker(Gorg, [person(Y, [YF|YFs])|Gs], X, L, Lout) :-
-    different(Gorg, Y, X),
-    different(Gorg, YF, X),
-    allAwareWorker(Gorg, [person(Y, YFs)|Gs], X, L, Lout).
-allAwareWorker(Gorg, [person(X, _)|Gs], X, L, Lout) :-
-    allAwareWorker(Gorg, Gs, X, L, Lout).
+%allAware(G, X, L) :- allAwareWorker(G, G, X, [], L).
+%
+%%insertIfAware(G, X, Y, Lin, [Y|Lin]) :-
+%
+%% allAwareWorker(Gorg, G, X, L1, L2)
+%allAwareWorker(_, [], _, L, L).
+%allAwareWorker(Gorg, [person(Y, _)|Gs], X, L, [Y|Lout]) :-
+%    different(Gorg, Y, X),
+%    aware(Gorg, X, Y),
+%    allAwareWorker(Gorg, Gs, X, L, Lout).
+%allAwareWorker(Gorg, [person(Y, [])|Gs], X, L, Lout) :-
+%    different(Gorg, Y, X),
+%    allAwareWorker(Gorg, Gs, X, L, Lout).
+%allAwareWorker(Gorg, [person(Y, [YF|YFs])|Gs], X, L, Lout) :-
+%    different(Gorg, Y, X),
+%    different(Gorg, YF, X),
+%    allAwareWorker(Gorg, [person(Y, YFs)|Gs], X, L, Lout).
+%allAwareWorker(Gorg, [person(X, _)|Gs], X, L, Lout) :-
+%    allAwareWorker(Gorg, Gs, X, L, Lout).
 
 % notIn(G, X, L)
 notIn(_, _, []).
@@ -144,9 +138,16 @@ notIn(G, X, [L|Ls]) :-
     different(G, X, L),
     notIn(G, X, Ls).
 
+member(H, [H|_]).       
+member(H, [_|T]) :- member(X, T). 
+
+app(H,T,[H|T]).
+
 % ignorant(G, X, Y)
-ignorant(G, X, Y) :-
-    different(G, X, Y), allAware(G, X, L), notIn(G, Y, L).
+
+ignorant(G, X, Y).
+
+    %different(G, X, Y), allAware(G, X, L), notIn(G, Y, L).
 
 %%% level 3 %%%
 
