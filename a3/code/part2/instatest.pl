@@ -168,9 +168,4 @@ test(same_world7, [fail]) :-
 test(same_world8, [fail]) :-
     g1(H), same_world([], H, _).
 
-
-% Performance
-%test(perf1, [nondet]) :-
-%    g1(G), time(friendly(G, X)).
-%
 :- end_tests(instahub).

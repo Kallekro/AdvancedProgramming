@@ -31,6 +31,7 @@ findX([person(Y,YF)|Gs], X, Go) :-
 
 % ignores(G, X, Y)
 ignores([person(X,[])|Gs], X, Y) :- follows(Gs, Y, X).
+ignores(G, X, Y) :- findX(G, X, [person(X, [])|_]), follows(G, Y, X).
 ignores(G, X, Y) :-
     findX(G, X, [person(X,[XF|XFs])|Gs]),
     different(Gs, Y, XF),
@@ -40,6 +41,7 @@ ignores(G, X, Y) :-
 
 % popular(G, X)
 popular([person(X,[])|_], X).
+popular(G, X) :- findX(G, X, [person(X, [])|_]).
 popular(G, X) :-
     findX(G, X, [person(X, [XF|XFs])|Gs]),
     follows([person(X,[XF|XFs])|Gs], XF, X),
@@ -47,6 +49,7 @@ popular(G, X) :-
 
 % outcast(G, X)
 outcast([person(X,[])|_], X).
+outcast(G, X) :- findX(G, X, [person(X, [])|_]).
 outcast(G, X) :-
     findX(G, X, [person(X, [XF|XFs])|Gs]),
     ignores([person(X,[XF|XFs])|Gs], XF, X),
