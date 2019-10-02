@@ -15,8 +15,22 @@ g2([person(batman, [green_arrow, superman]),
     person(flash, [green_arrow, supergirl]),
     person(superman, [green_arrow, supergirl])]).
 
-g3([person(axel, [])]).
-g4([person(axel, [])]).
+g3([person(slash, [morello]), person(morello, [])]).
+g4([person(jimi, []), person(emmanuel, [jimi])]).
+
+g1Alt([person(kara, [barry, clark]),
+    person(bruce,[clark, oliver]),
+    person(tim,[clark, oliver]),
+    person(barry, [kara, oliver]),
+    person(clark, [oliver, kara]),
+    person(oliver, [kara])]).
+
+g2Alt([person(batman, [green_arrow, superman]),
+    person(robin, [green_arrow, superman]),
+    person(green_arrow, [supergirl]),
+    person(supergirl, [flash, superman]),
+    person(flash, [green_arrow, supergirl]),
+    person(superman, [green_arrow, supergirl])]).
 
 :- begin_tests(instahub).
 
@@ -86,6 +100,9 @@ test(friendly2, [fail]) :-
 test(friendly3, [set(X == [barry, bruce])]) :-
     g1(G), friendly(G, X).
 
+test(friendly4, [fail]) :-
+    friendly([], kara).
+
 % hostile
 test(hostile1, [nondet]) :-
     g1(G), hostile(G, oliver).
@@ -95,6 +112,9 @@ test(hostile2, [fail]) :-
 
 test(hostile3, [set(X == [oliver, bruce])]) :-
     g1(G), hostile(G, X).
+
+test(hostile4, [fail]) :-
+    hostile([], kara).
 
 % aware
 test(aware1, [nondet]) :-
@@ -126,20 +146,26 @@ test(same_world1, [nondet]) :-
 test(same_world2, [fail]) :-
     g1(G), g3(H), same_world(G, H, _).
 
-test(same_world3, (K==[p(kara, supergirl),
+test(same_world3, (set(K==[[p(kara, supergirl),
                        p(bruce, batman),
                        p(barry, flash),
                        p(clark, superman),
-                       p(oliver, green_arrow)])) :-
+                       p(oliver, green_arrow)]]))) :-
     g1(G), g2(H), same_world(G, H, K).
 
 test(same_world4, [nondet]) :-
+    g1Alt(G), g2Alt(H), same_world(G, H, _).
+
+test(same_world5, [nondet]) :-
     g3(G), g4(H), same_world(G, H, _).
 
-test(same_world5, [fail]) :-
+test(same_world6, [nondet]) :-
+    same_world([], [], _).
+
+test(same_world7, [fail]) :-
     g1(G), same_world(G, [], _).
 
-test(same_world6, [fail]) :-
+test(same_world8, [fail]) :-
     g1(H), same_world([], H, _).
 
 

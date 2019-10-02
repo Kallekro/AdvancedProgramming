@@ -54,12 +54,10 @@ outcast([person(Z,ZF)|Gs], X) :-
     outcast(Gnew, X).
 
 % friendly(G, X)
-friendly([], _).
-friendly(G, X) :- allFollowers(G, X, L), followsAll(G, X, L).
+friendly([G|Gs], X) :- allFollowers([G|Gs], X, L), followsAll([G|Gs], X, L).
 
 % hostile(G, X)
-hostile([], _).
-hostile(G, X) :- allFollowers(G, X, L), ignoresAll(G, X, L).
+hostile([G|Gs], X) :- allFollowers([G|Gs], X, L), ignoresAll([G|Gs], X, L).
 
 % aux. predicate: allFollowers(G, X, L)
 % For getting a list L of all people who follows X in G
@@ -143,7 +141,7 @@ concatNoDups(G, [H1|T1], L2, [H1|Lo]) :-
     notIn(G, H1, L2),
     concatNoDups(G, T1, L2, Lo).
 concatNoDups(G, [H1|T1], L2, Lo) :-
-    member(H1, L2),
+    isIn(H1, L2),
     concatNoDups(G, T1, L2, Lo).
 
 % aux. predicate: notIn(G, X, L)
@@ -153,10 +151,10 @@ notIn(G, X, [L|Ls]) :-
     different(G, X, L),
     notIn(G, X, Ls).
 
-% aux. predicate: member(X, L)
+% aux. predicate: isIn(X, L)
 % For checking that X is in the list L
-member(H, [H|_]).
-member(H, [_|T]) :- member(H, T).
+isIn(H, [H|_]).
+isIn(H, [_|T]) :- isIn(H, T).
 
 % aux. predicate: eqLength(L1, L2)
 % For checking that the two lists L1 and L2 have equal length
