@@ -1,33 +1,31 @@
 -module(counter).
 -export([server/0, main/0]).
 
-inc({_Path, [{Key, Val}| _]}, Counter) ->
-  case {Key, list_to_integer(Val)} of
-    {"x", IntVal} when IntVal > 0 ->
-         Counter ! {"1", IntVal, self()};
-    _ -> Counter ! {"1", 1, self()}
-  end,
+% should check through all the keys and look for x.
+get_val(_, []) -> 1;
+get_val(Key, [{K,V}|Reqs]) ->
+  case {K,list_to_integer(V)} of
+    {Key, IntVal} when IntVal > 0 -> IntVal;
+    {Key, _} -> 1;
+    _ -> get_val(Key, Reqs)
+  end. 
+
+inc({_Path, Reqs}, Counter) ->
+  Counter ! {inc, get_val("x", Reqs), self()},
   receive
       S -> {200, "text/plain", S}
   end.
 
-dec({_Path, [{Key, Val}| _]}, Counter) ->
-  case {Key, list_to_integer(Val)} of
-    {"x", IntVal } when IntVal > 0 -> 
-         Counter ! {"0", IntVal, self()};
-    _ -> Counter ! {"0", 1, self()}
-  end,
+dec({_Path, Reqs}, Counter) ->
+  Counter ! {dec, get_val("x", Reqs), self()},
   receive
     S -> {200, "text/plain", S}
   end.
 
 count(Count) ->
   receive
-    {Type, Val, From} ->
-      case Type of
-        "1" -> NewVal = Count+Val, From ! (NewVal), count(NewVal);
-        "0" -> NewVal = Count-Val, From ! (NewVal), count(NewVal)
-      end
+    {inc, Val, From} -> NewVal=Count+Val, From ! NewVal, count(NewVal);
+    {dec, Val, From} -> NewVal=Count-Val, From ! NewVal, count(NewVal)    
   end.        
 
 server() -> 
@@ -42,6 +40,7 @@ try_it(Server) ->
   Ref1 = make_ref(),
   Ref2 = make_ref(),
   Ref3 = make_ref(),
+  Ref4 = make_ref(),
   flamingo:request(Server, {"/inc_with", [{"x", "4"}]}, Me, Ref1),
   receive
     {Ref1,Reply} -> io:format("~p~n", [Reply])
@@ -52,7 +51,11 @@ try_it(Server) ->
   end,
   flamingo:request(Server, {"/inc_with", [{"y", "2"}]}, Me, Ref3),
   receive
-    {Ref3, Reply3} -> Reply3
+    {Ref3, Reply3} -> io:format("~p~n", [Reply3])
+  end,
+  flamingo:request(Server, {"/inc_with", []}, Me, Ref4),
+  receive
+    {Ref4, Reply4} -> Reply4
   end.
 
 main() -> 
