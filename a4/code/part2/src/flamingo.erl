@@ -22,7 +22,14 @@ create_routes([H|T], _Action) -> [{H, _Action}|create_routes(T, _Action)].
 handle_request({Path, Args}, _From, _Ref, _Global, Routes) -> 
   case lookup(Routes, Path, {"", none}) of
     none -> _From ! {_Ref, {404, "text/plain", "No matching routes."}};
-    Action -> _From ! {_Ref, Action({Path, Args}, _Global)}
+    Action -> 
+      ActionResult = 
+        try Action({Path, Args}, _Global) of
+          Result -> Result
+        catch
+          Throw -> {500, "text/plain", Throw}
+        end,
+      _From ! {_Ref, ActionResult}
   end.
 
 server_loop(_Global, Routes) ->

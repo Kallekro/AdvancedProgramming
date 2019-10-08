@@ -1,7 +1,6 @@
 -module(counter).
 -export([server/0, main/0]).
 
-% should check through all the keys and look for x.
 get_val(_, []) -> 1;
 get_val(Key, [{K,V}|Reqs]) ->
   case {K,list_to_integer(V)} of
@@ -24,9 +23,11 @@ dec({_Path, Reqs}, Counter) ->
 
 count(Count) ->
   receive
-    {inc, Val, From} -> NewVal=Count+Val, From ! NewVal, count(NewVal);
-    {dec, Val, From} -> NewVal=Count-Val, From ! NewVal, count(NewVal)    
-  end.        
+    {inc, Val, From} -> NewVal=Count+Val;
+    {dec, Val, From} -> NewVal=Count-Val 
+  end,
+  From ! NewVal,
+  count(NewVal).
 
 server() -> 
   Counter = spawn(fun () -> count(0) end),
