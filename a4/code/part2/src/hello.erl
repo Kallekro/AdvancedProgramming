@@ -1,11 +1,11 @@
 -module(hello).
 -export([server/0, main/0]).
 
-hello({_Path, []}, _) ->
+hello({_Path, _}, _) ->
     {200, "text/plain",
      "Hello my dear friend"}.
 
-goodbye({_Path, []}, _) ->
+goodbye({_Path, _}, _) ->
     {200, "text/plain",
      "Sad to see you go already."}.
 
@@ -27,8 +27,9 @@ try_it(Server) ->
         {Ref, Reply2} -> Reply2
     end.
 
-% c(flamingo). c(hello). hello:main().
 
 main() ->
     Server = server(),
     try_it(Server).
+
+% c(flamingo). c(hello). hello:main().
