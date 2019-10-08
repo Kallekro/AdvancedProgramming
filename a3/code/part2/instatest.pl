@@ -168,5 +168,4 @@ test(same_world7, [fail]) :-
 test(same_world8, [fail]) :-
     g1(H), same_world([], H, _).
 
-
 :- end_tests(instahub).

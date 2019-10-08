@@ -21,37 +21,39 @@ different([person(X,XF),_|Gs], X, Y) :- different([person(X,XF)|Gs], X, Y).
 different([person(Y,YF),_|Gs], X, Y) :- different([person(Y,YF)|Gs], X, Y).
 different([_|Gs], X, Y) :- different(Gs, X, Y).
 
+% aux. predicate: findX(G, X, Go)
+% For shifting the graph until X is the first person
+findX([person(X,XF)|Gs], X, [person(X,XF)|Gs]).
+findX([person(Y,YF)|Gs], X, Go) :-
+    different([person(Y,YF)|Gs], X, Y),
+    concat(Gs, [person(Y,YF)], Gtmp),
+    findX(Gtmp, X, Go).
+
 % ignores(G, X, Y)
 ignores([person(X,[])|Gs], X, Y) :- follows(Gs, Y, X).
-ignores([person(X,[XF|XFs])|Gs], X, Y) :-
+ignores(G, X, Y) :- findX(G, X, [person(X, [])|_]), follows(G, Y, X).
+ignores(G, X, Y) :-
+    findX(G, X, [person(X,[XF|XFs])|Gs]),
     different(Gs, Y, XF),
     ignores([person(X,XFs)|Gs], X, Y).
-ignores([person(Z,ZF)|Gs], X, Y) :-
-    different([person(Z,ZF)|Gs], Z, X),
-    concat(Gs, [person(Z,ZF)], Gnew),
-    ignores(Gnew, X, Y).
 
 %%% level 1 %%%
 
 % popular(G, X)
 popular([person(X,[])|_], X).
-popular([person(X, [XF|XFs])|Gs], X) :-
+popular(G, X) :- findX(G, X, [person(X, [])|_]).
+popular(G, X) :-
+    findX(G, X, [person(X, [XF|XFs])|Gs]),
     follows([person(X,[XF|XFs])|Gs], XF, X),
     popular([person(X,XFs)|Gs], X).
-popular([person(Z,ZF)|Gs], X) :-
-    different([person(Z,ZF)|Gs], Z, X),
-    concat(Gs, [person(Z,ZF)], Gnew),
-    popular(Gnew, X).
 
 % outcast(G, X)
 outcast([person(X,[])|_], X).
-outcast([person(X, [XF|XFs])|Gs], X) :-
+outcast(G, X) :- findX(G, X, [person(X, [])|_]).
+outcast(G, X) :-
+    findX(G, X, [person(X, [XF|XFs])|Gs]),
     ignores([person(X,[XF|XFs])|Gs], XF, X),
     outcast([person(X,XFs)|Gs], X).
-outcast([person(Z,ZF)|Gs], X) :-
-    different([person(Z,ZF)|Gs], Z, X),
-    concat(Gs, [person(Z,ZF)], Gnew),
-    outcast(Gnew, X).
 
 % friendly(G, X)
 friendly([G|Gs], X) :- allFollowers([G|Gs], X, L), followsAll([G|Gs], X, L).
@@ -92,16 +94,14 @@ ignoresAll(G, X, [L|Ls]) :- ignores(G, X, L), ignoresAll(G, X, Ls).
 
 %%% level 2 %%%
 aware(G, X, Y) :- follows(G, X, Y).
-aware([person(X,[XF|_])|Gs], X, Y) :-
+aware(G, X, Y) :-
+    findX(G, X, [person(X,[XF|_])|Gs]),
     different([person(X,[XF|_])|Gs], X, Y),
     aware(Gs, XF, Y). % tried to remove cycles here
-aware([person(X,[_|XFs])|Gs], X, Y) :-
+aware(G, X, Y) :-
+    findX(G, X, [person(X,[_|XFs])|Gs]),
     different([person(X,[_|XFs])|Gs], X, Y),
     aware([person(X,XFs)|Gs], X, Y).
-aware([person(Z,ZF)|Gs], X, Y) :-
-    different([person(Z,ZF)|Gs], Z, X),
-    concat(Gs, [person(Z,ZF)], Gnew),
-    aware(Gnew, X, Y).
 
 % ignorant(G, X, Y)
 ignorant(G, X, Y) :-
