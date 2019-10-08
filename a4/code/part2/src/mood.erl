@@ -1,28 +1,33 @@
 -module(mood).
 -export([server/0, main/0]).
 
-moo1({_Path, [F]}, G) ->
-    io:fwrite("hey"),
-    flamingo:new_route(F, ["/moo"], fun moo2/2),
-    flamingo:new_route(F, ["/mood"], fun mood2/2),
-    moo2({_Path, []}, G).
+moo({_Path, _}, Tracker) ->
+    Tracker ! moo,
+    {200, "text/plain", "That's funny"}.
 
-moo2({_Path, _}, _) ->
-    {200, "text/plain",
-      "That's funny"}.
+mood({_Path, _}, Tracker) ->
+    case request_reply(Tracker, mood) of
+        true ->  {200, "Happy"};
+        false -> {200, "Sad"}
+    end.
 
-mood1({_Path, _}, _) ->
-    {200, "text/plain",
-      "Sad"}.
+request_reply(Pid, Request) ->
+    Pid ! {self(), Request},
+    receive
+        Response -> Response
+    end.
 
-mood2({_Path, _}, _) ->
-    {200, "text/plain",
-      "Happy!"}.
+moo_tracker(Visited) ->
+    receive
+        moo -> moo_tracker(true);
+        {From, mood} -> From ! Visited, moo_tracker(Visited)
+    end.
 
 server() ->
-    {ok, F} = flamingo:start("The Flamingo Server"),
-    flamingo:new_route(F, ["/moo"], fun moo1/2),
-    flamingo:new_route(F, ["/mood"], fun mood1/2),
+    Tracker = spawn(fun() -> moo_tracker(false) end),
+    {ok, F} = flamingo:start(Tracker),
+    flamingo:new_route(F, ["/moo"], fun moo/2),
+    flamingo:new_route(F, ["/mood"], fun mood/2),
     F.
 
 try_it(Server) ->

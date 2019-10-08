@@ -1,7 +1,8 @@
 -module(flamingo).
 -export([start/1, new_route/3, request/4, drop_route/2]).
 
-startswith([], _) -> true;
+startswith([], []) -> true;
+startswith([], [_|_]) -> false;
 startswith([_|_], []) -> true;
 startswith([H1|T1], [H2|T2]) -> (H1 =:= H2) and startswith(T1, T2).
 
