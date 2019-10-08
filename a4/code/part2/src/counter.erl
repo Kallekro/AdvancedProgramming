@@ -1,21 +1,20 @@
 -module(counter).
 -export([server/0, main/0]).
 
-inc({_Path, [Pair | _]}, Counter) ->
-  case Pair of
-    {"x", Val} when Val > 0 ->
-         io:fwrite("~p", [Val]),
-         Counter ! {"1", list_to_integer(Val), self()};
+inc({_Path, [{Key, Val}| _]}, Counter) ->
+  case {Key, list_to_integer(Val)} of
+    {"x", IntVal} when IntVal > 0 ->
+         Counter ! {"1", IntVal, self()};
     _ -> Counter ! {"1", 1, self()}
   end,
   receive
       S -> {200, "text/plain", S}
   end.
 
-dec({_Path, [Pair | _]}, Counter) ->
-  case Pair of
-    {"x", Val } when Val > 0 -> 
-         Counter ! {"0", list_to_integer(Val), self()};
+dec({_Path, [{Key, Val}| _]}, Counter) ->
+  case {Key, list_to_integer(Val)} of
+    {"x", IntVal } when IntVal > 0 -> 
+         Counter ! {"0", IntVal, self()};
     _ -> Counter ! {"0", 1, self()}
   end,
   receive
@@ -26,8 +25,8 @@ count(Count) ->
   receive
     {Type, Val, From} ->
       case Type of
-        "1" -> From ! (Count + Val), count(Count+Val);
-        "0" -> From ! (Count - Val), count(Count-Val)
+        "1" -> NewVal = Count+Val, From ! (NewVal), count(NewVal);
+        "0" -> NewVal = Count-Val, From ! (NewVal), count(NewVal)
       end
   end.        
 
@@ -45,11 +44,11 @@ try_it(Server) ->
   Ref3 = make_ref(),
   flamingo:request(Server, {"/inc_with", [{"x", "4"}]}, Me, Ref1),
   receive
-    {Ref1,Reply} -> io:format("~p", [Reply])
+    {Ref1,Reply} -> io:format("~p~n", [Reply])
   end,
   flamingo:request(Server, {"/dec_with", [{"x", "2"}]}, Me, Ref2),
   receive
-    {Ref2, Reply2} -> io:format("~p", [Reply2])
+    {Ref2, Reply2} -> io:format("~p~n", [Reply2])
   end,
   flamingo:request(Server, {"/inc_with", [{"y", "2"}]}, Me, Ref3),
   receive
