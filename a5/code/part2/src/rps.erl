@@ -1,11 +1,24 @@
 -module(rps).
--export([start/0, queue_up/3, move/2, stats/1, drain/3, test_queue_up/0, test_move1/0, test_move2/0]).
+-export([start/0, queue_up/3, move/2, stats/1, drain/3]).%, test_queue_up/0, test_move1/0, test_move2/0, test_drain/0]).
 
-coordinator(BrokerRef, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}}, RoundCount) ->
+coordinator_draining(PlayerNotified) ->
+    receive
+        {From, move, _} ->
+            From ! server_stopping,
+            if PlayerNotified =:= none -> coordinator_draining(From);
+               PlayerNotified /=  none ->
+                   if From =:= PlayerNotified -> coordinator_draining(PlayerNotified);
+                      From /= PlayerNotified -> pass
+                    end
+            end;
+        _ -> coordinator_draining(PlayerNotified)
+    end.
+
+coordinator(GameManager, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}}, RoundCount) ->
   receive
     {From, move, Choice} ->
       case FirstMove of
-        none -> coordinator(BrokerRef,{From, Choice}, RoundsToWin,  {{Pid1, Wins1}, {Pid2, Wins2}}, RoundCount);
+        none -> coordinator(GameManager, {From, Choice}, RoundsToWin,  {{Pid1, Wins1}, {Pid2, Wins2}}, RoundCount);
         {From1, Choice1} ->
           R = eval_rps(Choice1, Choice),
           {NewWins1, NewWins2} = case R of
@@ -22,7 +35,7 @@ coordinator(BrokerRef, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}}, R
           if (NewWins1 > RoundsToWin) or (NewWins2 > RoundsToWin) ->
                 Pid1 ! {game_over, NewWins1, NewWins2},
                 Pid2 ! {game_over, NewWins2, NewWins1},
-                BrokerRef ! {coord_done, self(), RoundCount+1},
+                GameManager ! {coord_done, self(), RoundCount+1},
                 exit(normal);
              Wins1 < NewWins1 ->
                  Pid1 ! round_won,
@@ -34,8 +47,10 @@ coordinator(BrokerRef, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}}, R
                  Pid1 ! tie,
                  Pid2 ! tie
           end,
-          coordinator(BrokerRef, none, RoundsToWin, {{Pid1, NewWins1}, {Pid2, NewWins2}}, RoundCount+1)
-      end
+          coordinator(GameManager, none, RoundsToWin, {{Pid1, NewWins1}, {Pid2, NewWins2}}, RoundCount+1)
+      end;
+    drain -> coordinator_draining(none);
+    _ -> coordinator(GameManager, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}}, RoundCount)
   end.
 
 eval_rps(C, C) -> tie;
@@ -46,24 +61,21 @@ eval_rps(paper, rock) -> choice1;
 eval_rps(scissors, rock) -> choice2;
 eval_rps(scissors, paper) -> choice1.
 
-match_up(_, _, []) -> false;
-match_up(BrokerRef, P, [H|T]) ->
+pair_up(_, []) -> false;
+pair_up(P, [H|T]) ->
     case {P, H} of
-        {{From1, Name1, Rounds}, {From2, Name2, Rounds}} ->
-            Coordinator = spawn(fun() -> coordinator(BrokerRef,none, Rounds div 2, {{From1, 0}, {From2, 0}}, 0) end),
-            From1 ! {ok, Name2, Coordinator},
-            From2 ! {ok, Name1, Coordinator},
-            {true, H, Coordinator};
-        _ -> match_up(BrokerRef, P, T)
+        {{_, _, Rounds}, {From2, Name2, Rounds}} ->
+            {true, {From2, Name2, Rounds}};
+        _ -> pair_up(P, T)
     end.
 
-find_matches(BrokerRef, [], Res, Coordinators) -> BrokerRef ! {new_queue, Res, Coordinators};
-find_matches(BrokerRef, [P1|T], Res, Coordinators) ->
-    case match_up(BrokerRef, P1, T) of
-        {true, P2, Coordinator} ->
+find_matches([]) -> [];
+find_matches([P1|T]) ->
+    case pair_up(P1, T) of
+        {true, P2} ->
             TmpT = remove_from_list(T, P2),
-            find_matches(BrokerRef, TmpT, Res, [Coordinator|Coordinators]);
-        false -> find_matches(BrokerRef, T, [P1|Res], Coordinators)
+            [{P1, P2}|find_matches(TmpT)];
+        false -> find_matches(T)
     end.
 
 remove_from_list([], _) -> [];
@@ -72,36 +84,70 @@ remove_from_list([H|T], P) ->
        P /= H -> [H|remove_from_list(T, P)]
     end.
 
-broker(Queue, MatchFlag, LongestGame, Coordinators) ->
-    if MatchFlag =:= true ->
-            BrokerRef = self(),
-            io:fwrite("~p~n", [Queue]),
-            spawn(fun() -> find_matches(BrokerRef, Queue, [], []) end);
-       MatchFlag =:= false -> MatchFlag
-    end,
+matchup_pairs(Queue, [], NewCoordinators) -> {Queue, NewCoordinators};
+matchup_pairs(Queue, [H|T], NewCoordinators) ->
+    {{Pid1, Name1, Rounds}, {Pid2, Name2, Rounds}} = H,
+    GameManager = self(),
+    Coordinator = spawn(fun() -> coordinator(GameManager, none, Rounds div 2,
+                                             {{Pid1, 0}, {Pid2, 0}}, 0) end),
+    Pid1 ! {ok, Name2, Coordinator},
+    Pid2 ! {ok, Name1, Coordinator},
+    TmpQueue = remove_from_list(remove_from_list(Queue,
+                {Pid1, Name1, Rounds}), {Pid2, Name2, Rounds}),
+    matchup_pairs(TmpQueue, T, [Coordinator|NewCoordinators]).
+
+drain_coordinators([]) -> true;
+drain_coordinators([C|CT]) ->
+    C ! drain,
+    drain_coordinators(CT).
+
+drain_queue([]) -> true;
+drain_queue([Q|T]) ->
+    Q ! server_stopping,
+    drain_queue(T).
+
+game_manager(Queue, LongestGame, Coordinators) ->
     receive
-        {queue, From, Name, Rounds} ->
-            TmpQueue = Queue ++ [{From, Name, Rounds}],
-            broker(TmpQueue, MatchFlag, LongestGame, Coordinators);
-        {new_queue, NewQueue, Coordinators} -> broker(NewQueue, true, LongestGame, Coordinators);
+        {queue_up, From, Name, Rounds} ->
+            TmpQueue1 = Queue ++ [{From, Name, Rounds}],
+            NewMatches = find_matches(TmpQueue1),
+            {TmpQueue2, NewCoordinators} = matchup_pairs(TmpQueue1, NewMatches, []),
+            game_manager(TmpQueue2, LongestGame, Coordinators ++ NewCoordinators);
         {coord_done, CoordinatorPid, Rounds} ->
-            Coordinators = remove_from_list(Coordinators, CoordinatorPid),
+            TmpCoordinators = remove_from_list(Coordinators, CoordinatorPid),
             if Rounds > LongestGame ->
-                broker(Queue, MatchFlag, Rounds, Coordinators);
+                game_manager(Queue, Rounds, TmpCoordinators);
                Rounds < LongestGame ->
-                broker(Queue, MatchFlag, LongestGame, Coordinators)
+                game_manager(Queue, LongestGame, TmpCoordinators)
             end;
         {stats, From} ->
             From ! {ok, LongestGame, length(Queue), length(Coordinators)},
-            broker(Queue, MatchFlag, LongestGame, Coordinators)
+            game_manager(Queue, LongestGame, Coordinators);
+        {drain, Pid, Msg} ->
+            drain_queue(Queue),
+            drain_coordinators(Coordinators),
+            if Pid =:= none -> pass;
+               Pid /= none -> Pid ! Msg
+            end;
+        _ -> game_manager(Queue, LongestGame, Coordinators)
     end.
 
-start() -> {ok, spawn(fun() -> broker([], true, 0 ,[]) end)}.
+broker(GameManager) ->
+    receive
+        Request ->
+            GameManager ! Request,
+            broker(GameManager)
+    end.
+
+start() ->
+    GameManager = spawn(fun() -> game_manager([], 0, []) end),
+    BrokerRef = spawn(fun() -> broker(GameManager) end),
+    {ok, BrokerRef}.
 
 queue_up(BrokerRef, Name, Rounds) ->
-    BrokerRef ! {queue, self(), Name, Rounds},
+    BrokerRef ! {queue_up, self(), Name, Rounds},
     receive
-       {ok, OtherPlayer, Coordinator} -> {ok, OtherPlayer, Coordinator}
+        Response -> Response
     end.
 
 move(Coordinator, Choice) ->
@@ -116,99 +162,125 @@ stats(BrokerRef) ->
         Stats -> Stats
     end.
 
-drain(_, _, _) ->  nope.
+drain(BrokerRef, Pid, Msg) ->
+    BrokerRef ! {drain, Pid, Msg}.
 
 
 
 
 % Tests
-queue_up_worker(Pid, BrokerRef, Name, Rounds) ->
-    Pid ! rps:queue_up(BrokerRef, Name, Rounds).
-
-
-player_process(Pid, Coordinator, Name) ->
-    receive
-        {move, Choice} ->
-            Pid ! {Name, move(Coordinator, Choice)},
-            player_process(Pid, Coordinator, Name);
-        done -> exit(normal)
-    end.
-
-new_player_process(Pid, BrokerRef, Name, Rounds) ->
-    {ok, _, Coordinator} = rps:queue_up(BrokerRef, Name, Rounds),
-    player_process(Pid, Coordinator, Name).
-
-test_queue_up() ->
-    {ok, BrokerRef} = rps:start(),
-    Pid = self(),
-    spawn(fun() -> queue_up_worker(Pid, BrokerRef, "John", 5) end),
-    B = rps:queue_up(BrokerRef, "Jimbo", 5),
-    A = receive
-        Response -> Response
-    end,
-    io:fwrite("A: ~p~n", [A]),
-    io:fwrite("B: ~p~n", [B])
-    .
-
-test_move1() ->
-    {ok, BrokerRef} = rps:start(),
-    Pid = self(),
-    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Preben", 1) end),
-    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Jeppe", 1) end),
-    P1 ! {move, rock},
-    P2 ! {move, paper},
-    Mv1 = receive
-        Resp1 -> Resp1
-    end,
-    Mv2 = receive
-        Resp2 -> Resp2
-    end,
-    io:fwrite("~p~n", [Mv1]),
-    io:fwrite("~p~n", [Mv2]),
-    P1 ! done,
-    P2 ! done
-    .
-
-test_move2() ->
-    {ok, BrokerRef} = rps:start(),
-    Pid = self(),
-    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Preben", 5) end),
-    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Jeppe", 5) end),
-    P1 ! {move, rock},
-    P2 ! {move, paper},
-    Mv1_1 = receive
-        Resp1_1 -> Resp1_1
-    end,
-    Mv2_1 = receive
-        Resp2_1 -> Resp2_1
-    end,
-
-    P1 ! {move, rock},
-    P2 ! {move, paper},
-    Mv1_2 = receive
-        Resp1_2 -> Resp1_2
-    end,
-    Mv2_2 = receive
-        Resp2_2 -> Resp2_2
-    end,
-    P1 ! {move, rock},
-    P2 ! {move, paper},
-    Mv1_3 = receive
-        Resp1_3 -> Resp1_3
-    end,
-    Mv2_3 = receive
-        Resp2_3 -> Resp2_3
-    end,
-
-    io:fwrite("~p~n", [Mv1_1]),
-    io:fwrite("~p~n", [Mv2_1]),
-    io:fwrite("~p~n", [Mv1_2]),
-    io:fwrite("~p~n", [Mv2_2]),
-    io:fwrite("~p~n", [Mv1_3]),
-    io:fwrite("~p~n", [Mv2_3]),
-    P1 ! done,
-    P2 ! done,
-
-    Stats = stats(BrokerRef),
-    io:fwrite("~p~n", [Stats])
-    .
+%queue_up_worker(Pid, BrokerRef, Name, Rounds) ->
+%    Pid ! rps:queue_up(BrokerRef, Name, Rounds).
+%
+%
+%player_process(Pid, Coordinator, Name) ->
+%    receive
+%        {move, Choice} ->
+%            Pid ! {Name, move(Coordinator, Choice)},
+%            player_process(Pid, Coordinator, Name);
+%        done -> exit(normal)
+%    end.
+%
+%new_player_process(Pid, BrokerRef, Name, Rounds) ->
+%    case rps:queue_up(BrokerRef, Name, Rounds) of
+%        {ok, _, Coordinator} ->
+%            Pid ! matched_up,
+%            player_process(Pid, Coordinator, Name);
+%        OtherResp -> OtherResp
+%    end.
+%
+%wait_for_matchup() ->
+%    receive
+%        matched_up -> done
+%    end.
+%
+%test_queue_up() ->
+%    {ok, BrokerRef} = rps:start(),
+%    Pid = self(),
+%    spawn(fun() -> queue_up_worker(Pid, BrokerRef, "John", 5) end),
+%    B = rps:queue_up(BrokerRef, "Jimbo", 5),
+%    A = receive
+%        Response -> Response
+%    end,
+%    io:fwrite("A: ~p~n", [A]),
+%    io:fwrite("B: ~p~n", [B]).
+%
+%test_move1() ->
+%    {ok, BrokerRef} = rps:start(),
+%    Pid = self(),
+%    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Preben", 1) end),
+%    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Jeppe", 1) end),
+%    wait_for_matchup(), wait_for_matchup(),
+%    P1 ! {move, rock},
+%    P2 ! {move, paper},
+%    Mv1 = receive
+%        Resp1 -> Resp1
+%    end,
+%    Mv2 = receive
+%        Resp2 -> Resp2
+%    end,
+%    io:fwrite("~p~n", [Mv1]),
+%    io:fwrite("~p~n", [Mv2]),
+%    P1 ! done,
+%    P2 ! done
+%    .
+%
+%test_move2() ->
+%    {ok, BrokerRef} = rps:start(),
+%    Pid = self(),
+%    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Preben", 5) end),
+%    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Jeppe", 5) end),
+%    wait_for_matchup(), wait_for_matchup(),
+%    P1 ! {move, rock},
+%    P2 ! {move, paper},
+%    Mv1_1 = receive
+%        Resp1_1 -> Resp1_1
+%    end,
+%    Mv2_1 = receive
+%        Resp2_1 -> Resp2_1
+%    end,
+%
+%    P1 ! {move, rock},
+%    P2 ! {move, paper},
+%    Mv1_2 = receive
+%        Resp1_2 -> Resp1_2
+%    end,
+%    Mv2_2 = receive
+%        Resp2_2 -> Resp2_2
+%    end,
+%    P1 ! {move, rock},
+%    P2 ! {move, paper},
+%    Mv1_3 = receive
+%        Resp1_3 -> Resp1_3
+%    end,
+%    Mv2_3 = receive
+%        Resp2_3 -> Resp2_3
+%    end,
+%
+%    io:fwrite("~p~n", [Mv1_1]),
+%    io:fwrite("~p~n", [Mv2_1]),
+%    io:fwrite("~p~n", [Mv1_2]),
+%    io:fwrite("~p~n", [Mv2_2]),
+%    io:fwrite("~p~n", [Mv1_3]),
+%    io:fwrite("~p~n", [Mv2_3]),
+%    P1 ! done,
+%    P2 ! done,
+%
+%    Stats = stats(BrokerRef),
+%    io:fwrite("~p~n", [Stats])
+%    .
+%
+%test_drain() ->
+%
+%    {ok, BrokerRef} = rps:start(),
+%    Pid = self(),
+%    spawn(fun() -> new_player_process(Pid, BrokerRef, "Preben", 5) end),
+%    spawn(fun() -> new_player_process(Pid, BrokerRef, "Jeppe", 5) end),
+%    wait_for_matchup(), wait_for_matchup(),
+%    spawn(fun() -> new_player_process(Pid, BrokerRef, "James", 3) end),
+%
+%    BrokerRef ! {drain, self(), "Don Draining"},
+%    io:fwrite("Waiting for drain..~n"),
+%    receive
+%        DrainResp -> io:fwrite("~p~n", [DrainResp])
+%    end.
