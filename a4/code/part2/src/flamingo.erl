@@ -19,17 +19,26 @@ lookup([{Key, Val}|T], X, {ResK, ResV}) ->
 create_routes([], _Action) -> [];
 create_routes([H|T], _Action) -> [{H, _Action}|create_routes(T, _Action)].
 
-% Request should be non-blocking
+handle_request({Path, Args}, _From, _Ref, _Global, Routes) ->
+  case lookup(Routes, Path, {"", none}) of
+    none -> _From ! {_Ref, {404, "text/plain", "No matching routes."}};
+    Action ->
+      ActionResult =
+        try Action({Path, Args}, _Global) of
+          Result -> Result
+        catch
+          Throw -> {500, "text/plain", Throw}
+        end,
+      _From ! {_Ref, ActionResult}
+  end.
 
 server_loop(_Global, Routes) ->
   receive
     {new_route, _Prefixes, _Action} ->
       server_loop(_Global, create_routes(_Prefixes, _Action) ++ Routes);
     {request, {Path, Args}, _From, _Ref} ->
-      case lookup(Routes, Path, {"", none}) of
-        none -> _From ! {_Ref, {404, "text/plain", "No matching routes."}};
-        Action -> _From ! {_Ref, Action({Path, Args}, _Global)}
-      end,
+      spawn(fun () ->
+        handle_request({Path, Args}, _From, _Ref, _Global, Routes) end),
       server_loop(_Global, Routes)
   end.
 
