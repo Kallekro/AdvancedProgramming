@@ -19,6 +19,8 @@ lookup([{Key, Val}|T], X, {ResK, ResV}) ->
 create_routes([], _Action) -> [];
 create_routes([H|T], _Action) -> [{H, _Action}|create_routes(T, _Action)].
 
+% Request should be non-blocking
+
 server_loop(_Global, Routes) ->
   receive
     {new_route, _Prefixes, _Action} ->
