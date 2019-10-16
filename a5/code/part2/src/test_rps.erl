@@ -13,7 +13,11 @@ test_all() ->
        simple_game(),
        best_of_3(),
        match_players_crowded(),
-       simple_stats()
+       simple_stats(),
+       complex_stats(),
+       very_simple_drain(),
+       simple_drain_after(),
+       simple_drain_before()
       ], [verbose]).
 
 
@@ -121,6 +125,86 @@ simple_stats() ->
     ?assertMatch({ok, 3, 0, 0}, Stats)
   end}.
 
+complex_stats() ->
+  {"Stats after finished game, during another game and with players in queue",
+  fun() ->
+    {ok, BrokerRef} = rps:start(),
+    Pid = self(),
+    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Batman", 3) end),
+    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Robin", 3) end),
+    spawn(fun() -> new_player_process(Pid, BrokerRef, "Huey", 5) end),
+    spawn(fun() -> new_player_process(Pid, BrokerRef, "Dewey", 5) end),
+    spawn(fun() -> new_player_process(Pid, BrokerRef, "Louie", 4) end),
+    spawn(fun() -> new_player_process(Pid, BrokerRef, "Donald", 1) end),
+    wait_for_matchup(4),
+    % first game finishes
+    P1 ! {move, scissors}, P2 ! {move, paper},
+    get_responses("Batman", "Robin"),
+    P1 ! {move, rock}, P2 ! {move, scissors},
+    get_responses("Batman", "Robin"),
+    P1 ! done, P2 ! done,
+    Stats = rps:statistics(BrokerRef),
+    ?assertMatch({ok, 2, 2, 1}, Stats)
+  end}.
+
+very_simple_drain() ->
+  {"Drain after server started",
+  fun() ->
+    {ok, BrokerRef} = rps:start(),
+    rps:drain(BrokerRef, self(), "Server drained."),
+    Msg = receive
+      Rsp -> Rsp
+    end,
+    ?assertMatch("Server drained.", Msg)
+  end}.
+
+simple_drain_after() ->
+  {"Drain after one game is finished",
+  fun() ->
+    {ok, BrokerRef} = rps:start(),
+    Pid = self(),
+    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Donald", 1) end),
+    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Daisy", 1) end),
+    wait_for_matchup(2),
+    % game finishes
+    P1 ! {move, scissors}, P2 ! {move, paper},
+    Responses = get_responses("Donald", "Daisy"),
+    P1 ! done, P2 ! done,
+    % drain
+    rps:drain(BrokerRef, self(), "Server drained."),
+    Msg = receive
+      Rsp -> Rsp
+    end,
+    ?assertMatch({"Server drained.", {{game_over, 1, 0}, {game_over, 0, 1}}},
+                 {Msg, Responses})
+  end}.
+
+simple_drain_before() ->
+  {"Drain before one game is finished",fun() ->
+    {ok, BrokerRef} = rps:start(),
+    Pid = self(),
+    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Donald", 1) end),
+    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Daisy", 1) end),
+    wait_for_matchup(2),
+    % drain
+    rps:drain(BrokerRef, self(), "Server drained."),
+    % sleep shortly to ensure drain msg is received before moves
+    timer:sleep(10),
+    % players try move after drain
+    P1 ! {move, scissors}, P2 ! {move, paper},
+    Responses = get_responses("Donald", "Daisy"),
+    P1 ! done, P2 ! done,
+
+    Msg = receive
+      Rsp -> Rsp
+    end,
+    ?assertMatch({"Server drained.", {server_stopping, server_stopping}},
+                 {Msg, Responses})
+  end}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%        End of tests       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Helper functions
 get_responses(Name1, Name2) ->
   receive
