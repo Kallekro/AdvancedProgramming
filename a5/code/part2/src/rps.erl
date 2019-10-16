@@ -1,5 +1,5 @@
 -module(rps).
--export([start/0, queue_up/3, move/2, stats/1, drain/3]).%, test_queue_up/0, test_move1/0, test_move2/0, test_drain/0]).
+-export([start/0, queue_up/3, move/2, statistics/1, drain/3]).
 
 coordinator_draining(PlayerNotified) ->
     receive
@@ -30,7 +30,7 @@ coordinator(GameManager, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}},
               if From1 =:= Pid1 -> {Wins1, Wins2+1};
                  From1 /=  Pid1 -> {Wins1+1, Wins2}
               end;
-            tie -> From1 ! tie, From ! tie, {Wins1, Wins2}
+            tie -> {Wins1, Wins2}
           end,
           if (NewWins1 > RoundsToWin) or (NewWins2 > RoundsToWin) ->
                 Pid1 ! {game_over, NewWins1, NewWins2},
@@ -38,14 +38,14 @@ coordinator(GameManager, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}},
                 GameManager ! {coord_done, self(), RoundCount+1},
                 exit(normal);
              Wins1 < NewWins1 ->
-                 Pid1 ! round_won,
-                 Pid2 ! round_lost;
+                Pid1 ! round_won,
+                Pid2 ! round_lost;
              Wins2 < NewWins2 ->
-                 Pid1 ! round_lost,
-                 Pid2 ! round_won;
+                Pid1 ! round_lost,
+                Pid2 ! round_won;
              (Wins1 =:= NewWins1) and (Wins2 =:= NewWins2) ->
-                 Pid1 ! tie,
-                 Pid2 ! tie
+                Pid1 ! tie,
+                Pid2 ! tie
           end,
           coordinator(GameManager, none, RoundsToWin, {{Pid1, NewWins1}, {Pid2, NewWins2}}, RoundCount+1)
       end;
@@ -53,7 +53,7 @@ coordinator(GameManager, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}},
     _ -> coordinator(GameManager, FirstMove, RoundsToWin, {{Pid1, Wins1}, {Pid2, Wins2}}, RoundCount)
   end.
 
-eval_rps(C, C) -> tie;
+eval_rps(C1, C2) when C1 =:= C2 -> tie;
 eval_rps(rock, paper) -> choice2;
 eval_rps(rock, scissors) -> choice1;
 eval_rps(paper, scissors) -> choice2;
@@ -156,7 +156,7 @@ move(Coordinator, Choice) ->
         Response -> Response
     end.
 
-stats(BrokerRef) ->
+statistics(BrokerRef) ->
     BrokerRef ! {stats, self()},
     receive
         Stats -> Stats
