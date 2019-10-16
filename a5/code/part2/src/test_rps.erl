@@ -12,7 +12,8 @@ test_all() ->
        match_players_simple(),
        simple_game(),
        best_of_3(),
-       match_players_crowded()
+       match_players_crowded(),
+       simple_stats()
       ], [verbose]).
 
 
@@ -59,12 +60,12 @@ simple_game() ->
   fun() ->
     {ok, BrokerRef} = rps:start(),
     Pid = self(),
-    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Preben", 1) end),
-    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Jeppe", 1) end),
-    wait_for_matchup(), wait_for_matchup(),
+    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Batman", 1) end),
+    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Robin", 1) end),
+    wait_for_matchup(2),
     P1 ! {move, rock},
     P2 ! {move, paper},
-    Responses = get_responses("Preben", "Jeppe"),
+    Responses = get_responses("Batman", "Robin"),
     P1 ! done,
     P2 ! done,
     ?assertMatch({{game_over, 0, 1}, {game_over, 1, 0}}, Responses)
@@ -75,28 +76,50 @@ best_of_3() ->
   fun() ->
     {ok, BrokerRef} = rps:start(),
     Pid = self(),
-    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Preben", 3) end),
-    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Jeppe", 3) end),
-    wait_for_matchup(), wait_for_matchup(),
-    P1 ! {move, rock},
-    P2 ! {move, paper},
-    Responses1 = get_responses("Preben", "Jeppe"),
-    P1 ! {move, scissors},
-    P2 ! {move, paper},
-    Responses2 = get_responses("Preben", "Jeppe"),
-    P1 ! {move, rock},
-    P2 ! {move, rock},
-    Responses3 = get_responses("Preben", "Jeppe"),
-    P1 ! {move, paper},
-    P2 ! {move, rock},
-    Responses4 = get_responses("Preben", "Jeppe"),
-    P1 ! done,
-    P2 ! done,
+    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Batman", 3) end),
+    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Robin", 3) end),
+    wait_for_matchup(2),
+    P1 ! {move, rock}, P2 ! {move, paper},
+    Responses1 = get_responses("Batman", "Robin"),
+    P1 ! {move, scissors}, P2 ! {move, paper},
+    Responses2 = get_responses("Batman", "Robin"),
+    P1 ! {move, rock}, P2 ! {move, rock},
+    Responses3 = get_responses("Batman", "Robin"),
+    P1 ! {move, paper}, P2 ! {move, rock},
+    Responses4 = get_responses("Batman", "Robin"),
+    P1 ! done, P2 ! done,
     Responses = [Responses1, Responses2, Responses3, Responses4],
     ?assertMatch([{round_lost, round_won}, {round_won, round_lost},
                   {tie,tie}, {{game_over,2,1}, {game_over,1,2}}], Responses)
   end}.
 
+simple_stats() ->
+  {"Stats after 2 games with longest game 3",
+  fun() ->
+    {ok, BrokerRef} = rps:start(),
+    Pid = self(),
+    P1 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Batman", 3) end),
+    P2 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Robin", 3) end),
+    P3 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Huey", 5) end),
+    P4 = spawn(fun() -> new_player_process(Pid, BrokerRef, "Dewey", 5) end),
+    wait_for_matchup(4),
+    % first game
+    P1 ! {move, scissors}, P2 ! {move, paper},
+    get_responses("Batman", "Robin"),
+    P1 ! {move, rock}, P2 ! {move, scissors},
+    get_responses("Batman", "Robin"),
+    P1 ! done, P2 ! done,
+    % second game
+    P3 ! {move, rock}, P4 ! {move, paper},
+    get_responses("Huey", "Dewey"),
+    P3 ! {move, scissors}, P4 ! {move, rock},
+    get_responses("Huey", "Dewey"),
+    P3 ! {move, paper}, P4 ! {move, scissors},
+    get_responses("Huey", "Dewey"),
+    P3 ! done, P4 ! done,
+    Stats = rps:statistics(BrokerRef),
+    ?assertMatch({ok, 3, 0, 0}, Stats)
+  end}.
 
 % Helper functions
 get_responses(Name1, Name2) ->
@@ -127,9 +150,13 @@ new_player_process(Pid, BrokerRef, Name, Rounds) ->
       player_process(Pid, Coordinator, Name);
     OtherResp -> OtherResp
   end.
-wait_for_matchup() ->
+
+wait_for_matchup(N) ->
   receive
-    matched_up -> done
+    matched_up ->
+      if (N-1) =:= 0 -> done;
+         (N-1) > 0 -> wait_for_matchup(N-1)
+      end
   end.
 
 %match_2_players() ->
