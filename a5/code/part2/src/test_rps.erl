@@ -32,8 +32,8 @@ match_players_simple() ->
     {ok, Name2, _} = receive
         Response -> Response
     end,
-    ?assertMatch({{ok, "Jimbo", Coordinator}, {ok, "John", Coordinator}},
-                 {{ok, Name2, Coordinator}, {ok, Name1, Coordinator}})
+    ?assertMatch({{"Jimbo", Coordinator}, {"John", Coordinator}},
+                 {{Name2, Coordinator}, {Name1, Coordinator}})
   end}.
 
 match_players_crowded() ->
@@ -45,10 +45,12 @@ match_players_crowded() ->
     spawn(fun() -> queue_up_worker(Pid, BrokerRef, "Batman", 5) end),
     spawn(fun() -> queue_up_worker(Pid, BrokerRef, "Dewey", 2) end),
     spawn(fun() -> queue_up_worker(Pid, BrokerRef, "Louie", 3) end),
-    spawn(fun() -> queue_up_worker(Pid, BrokerRef, "Robin", 5) end),
-    {{ok, Name2, Coordinator}, {ok, Name1, Coordinator}} = get_responses("Batman", "Robin"),
-    ?assertMatch({{ok, "Robin", Coordinator}, {ok, "Batman", Coordinator}},
-                 {{ok, Name2, Coordinator}, {ok, Name1, Coordinator}})
+    {ok, Name1, Coordinator} = rps:queue_up(BrokerRef, "Robin", 5),
+    {ok, Name2, _} = receive
+        Response -> Response
+    end,
+    ?assertMatch({{"Robin", Coordinator}, {"Batman", Coordinator}},
+                 {{Name2, Coordinator}, {Name1, Coordinator}})
   end
   }.
 
